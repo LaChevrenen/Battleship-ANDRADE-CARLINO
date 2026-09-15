@@ -1,9 +1,10 @@
 using BattleShip.API.Engine;
 using BattleShip.Models;
+using Xunit.Abstractions;
 
 namespace BattleShip.Tests.Engine;
 
-public sealed class HuntTargetStrategyTests
+public sealed class HuntTargetStrategyTests(ITestOutputHelper output)
 {
     private static RevealedBoard View(
         int width = 10,
@@ -13,6 +14,44 @@ public sealed class HuntTargetStrategyTests
         Coordinate[][]? sunkShips = null) =>
         new(width, height, (misses ?? []).ToHashSet(), (hits ?? []).ToHashSet(),
             [.. (sunkShips ?? []).Select(cells => (IReadOnlySet<Coordinate>)cells.ToHashSet())]);
+
+    public static IEnumerable<object[]> Seeds => Enumerable.Range(0, 50).Select(seed => new object[] { seed });
+
+    private static int ShotsToSinkRandomFleet(int seed)
+    {
+        var random = new Random(seed);
+        var board = RandomFleetPlacer.Place(
+            GameRules.GridSize, GameRules.GridSize, GameRules.DefaultShipLengths, random).Board!;
+        var shots = 0;
+
+        // Chaque tour de boucle est borné par une assertion : une stratégie défaillante fait échouer le test au lieu de le bloquer.
+        while (!board.AllShipsSunk)
+        {
+            Assert.True(shots < 100, "Plus de 100 tirs sans couler toute la flotte.");
+            var target = HuntTargetStrategy.ChooseTarget(board.Reveal(), random);
+            Assert.True(board.ReceiveShot(target).IsAccepted, $"Tir refusé en {target} après {shots} tirs.");
+            shots++;
+        }
+
+        return shots;
+    }
+
+    [Theory]
+    [MemberData(nameof(Seeds))]
+    public void La_strategie_coule_une_flotte_aleatoire_sans_tir_refuse_en_100_tirs_au_plus(int seed)
+    {
+        Assert.InRange(ShotsToSinkRandomFleet(seed), GameRules.DefaultShipLengths.Sum(), 100);
+    }
+
+    [Fact]
+    public void La_chasse_cible_coule_une_flotte_nettement_plus_vite_que_le_hasard()
+    {
+        // Référence pour comparer les niveaux d'IA : le tir au hasard pur demande environ 95 coups en moyenne sur 10x10.
+        var shots = Enumerable.Range(0, 1000).Select(ShotsToSinkRandomFleet).ToList();
+
+        output.WriteLine($"Chasse-cible sur {shots.Count} flottes : moyenne {shots.Average():F1}, min {shots.Min()}, max {shots.Max()}");
+        Assert.True(shots.Average() < 75, $"Moyenne de {shots.Average():F1} coups : le mode cible ne se déclenche pas.");
+    }
 
     // Rejoue le choix sur 100 graines pour observer toutes les cases que la stratégie peut viser.
     private static HashSet<Coordinate> ChosenOverSeeds(RevealedBoard view) =>

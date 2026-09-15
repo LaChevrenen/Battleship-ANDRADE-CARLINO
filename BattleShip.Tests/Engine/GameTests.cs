@@ -245,6 +245,30 @@ public sealed class GameTests
         Assert.Equivalent(new[] { new Coordinate(0, 0) }, computer.Views[1].Hits, strict: true);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    public void L_ordinateur_branche_sur_la_chasse_cible_gagne_une_partie_complete(int seed)
+    {
+        // Ce test boucle dans Game si la stratégie propose une case refusée : il ne vient qu'après le test de terminaison sur Board.
+        var strategyRandom = new Random(seed);
+        Coordinate ChooseComputerTarget(RevealedBoard view) => HuntTargetStrategy.ChooseTarget(view, strategyRandom);
+        // Grille de l'ordinateur à un seul navire : le joueur a 99 cases d'eau, assez pour rendre la main à chaque tour.
+        var computerShip = new Coordinate(9, 9);
+        var game = new Game(SmallFleet(), new Board(10, 10, [new Ship([computerShip])]), new Random(seed));
+        game.TryStart(ChooseComputerTarget, out _);
+
+        var playerWater = Enumerable.Range(0, 100).Select(i => new Coordinate(i % 10, i / 10)).Where(cell => cell != computerShip);
+        foreach (var cell in playerWater.TakeWhile(_ => game.Phase == GamePhase.InProgress))
+            Assert.Equal(ShotResult.Miss, game.PlayerFire(cell, ChooseComputerTarget).PlayerShot);
+
+        Assert.Equal(GamePhase.Finished, game.Phase);
+        Assert.Equal(Side.Computer, game.Winner);
+    }
+
     private sealed class ScriptedTargets(params Coordinate[] targets)
     {
         private readonly Queue<Coordinate> remaining = new(targets);
