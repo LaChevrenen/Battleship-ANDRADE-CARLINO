@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+option csharp_namespace = "BattleShip.Grpc";
+
+package battleship;
+
+// Seule la lecture de l'état passe en gRPC : toutes les modifications de partie restent en HTTP.
+service GameService {
+  rpc GetGame (GetGameRequest) returns (GameState);
+}
+
+message GetGameRequest {
+  string game_id = 1;
+}
+
+// Construit uniquement à partir de GameStateDto côté serveur : même masquage que la réponse HTTP.
+message GameState {
+  string id = 1;
+  int32 version = 2;
+  GamePhase phase = 3;
+  // optional : hors partie en cours il n'y a ni tour ni gagnant, et l'absence doit rester distincte d'une valeur.
+  optional Side current_turn = 4;
+  optional Side winner = 5;
+  OwnBoard player = 6;
+  OpponentBoard opponent = 7;
+}
+
+message Coordinate {
+  int32 column = 1;
+  int32 row = 2;
+}
+
+message CellList {
+  repeated Coordinate cells = 1;
+}
+
+message OwnBoard {
+  int32 width = 1;
+  int32 height = 2;
+  repeated CellList ships = 3;
+  repeated Coordinate misses = 4;
+  repeated Coordinate hits = 5;
+}
+
+message OpponentBoard {
+  int32 width = 1;
+  int32 height = 2;
+  repeated Coordinate misses = 3;
+  repeated Coordinate hits = 4;
+  repeated CellList sunk_ships = 5;
+}
+
+// En proto3, la valeur 0 est celle d'un champ non renseigné : elle ne doit jamais signifier un vrai état.
+enum GamePhase {
+  GAME_PHASE_UNSPECIFIED = 0;
+  GAME_PHASE_SETUP = 1;
+  GAME_PHASE_IN_PROGRESS = 2;
+  GAME_PHASE_FINISHED = 3;
+}
+
+enum Side {
+  SIDE_UNSPECIFIED = 0;
+  SIDE_PLAYER = 1;
+  SIDE_COMPUTER = 2;
+}
