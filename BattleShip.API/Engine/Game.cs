@@ -43,6 +43,7 @@ public sealed class Game(Board playerBoard, Board computerBoard, Random random)
     {
         var shots = new List<ComputerShot>();
 
+        // Un refus ne change pas le tour : si chooseTarget propose sans cesse des cases refusées, cette boucle ne termine jamais.
         while (Phase == GamePhase.InProgress && CurrentTurn == Side.Computer)
         {
             var target = chooseTarget();
