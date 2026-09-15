@@ -67,14 +67,30 @@ public sealed class GameTests
         Assert.InRange(SeedWhereFirstShooterIs(Side.Computer), 0, 99);
     }
 
-    [Fact]
-    public void Demarrer_une_partie_deja_demarree_est_refuse()
+    public static IEnumerable<object[]> Seeds => Enumerable.Range(0, 20).Select(seed => new object[] { seed });
+
+    [Theory]
+    [MemberData(nameof(Seeds))]
+    public void Demarrer_une_partie_deja_demarree_est_refuse_sans_changer_le_tour_ni_les_grilles(int seed)
     {
-        var game = GameStartedByPlayer();
+        // Plusieurs graines : un second tirage au sort fautif finit par désigner l'ordinateur.
+        var game = NewGame(seed);
+        game.TryStart(new ScriptedTargets(Water).Next, out _);
+        game.PlayerFire(new(0, 0), new ScriptedTargets().Next);
+        var playerBoard = game.PlayerBoard;
+        var computerBoard = game.ComputerBoard;
 
         Assert.False(game.TryStart(new ScriptedTargets().Next, out var computerShots));
+
         Assert.Empty(computerShots);
+        Assert.Equal(GamePhase.InProgress, game.Phase);
         Assert.Equal(Side.Player, game.CurrentTurn);
+        Assert.Same(playerBoard, game.PlayerBoard);
+        Assert.Same(computerBoard, game.ComputerBoard);
+        // Le tir d'avant le second démarrage est toujours enregistré.
+        Assert.Equal(
+            ShotResult.Rejected(ShotRejection.AlreadyTargeted),
+            game.PlayerFire(new(0, 0), new ScriptedTargets().Next).PlayerShot);
     }
 
     [Fact]
