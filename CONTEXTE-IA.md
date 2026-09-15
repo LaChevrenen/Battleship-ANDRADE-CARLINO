@@ -77,6 +77,10 @@
     `Program.cs`, noms de tests en français (`Un_coup_hors_grille_est_refuse`).
 - Décisions structurantes et références des ADR :
 - Vérifications réalisées et limites connues :
+  - Tirs pour couler la flotte par défaut en 10×10, sur 1000 flottes aléatoires : chasse-cible
+    moyenne 61,3 (min 27, max 100) ; tir aléatoire pur moyenne 95,5 (min 64, max 100).
+  - Le seuil « moyenne chasse-cible < 75 » est protégé par le test
+    `La_chasse_cible_coule_une_flotte_nettement_plus_vite_que_le_hasard` (commit `6e7baed`).
 - Arbitrages et évolution du périmètre :
 
   Le perimetre a ete revu au moment du cadrage : la grille et la flotte configurables, ainsi
