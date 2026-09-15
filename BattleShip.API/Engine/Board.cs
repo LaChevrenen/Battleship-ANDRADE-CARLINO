@@ -7,6 +7,8 @@ public sealed class Board(int width, int height, IEnumerable<Ship> ships)
     private readonly Ship[] fleet = [.. ships];
     private readonly HashSet<Coordinate> shots = [];
 
+    public IReadOnlyList<Ship> Ships => fleet;
+
     public bool AllShipsSunk => fleet.All(IsSunk);
 
     public ShotResult ReceiveShot(Coordinate target)
