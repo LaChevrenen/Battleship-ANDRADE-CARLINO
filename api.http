@@ -1,8 +1,55 @@
-@api = https://localhost:7001
-### Lire le catalogue de démonstration
-GET {{api}}/products
-### Vérifier un produit
-POST {{api}}/products/check
+@api = http://localhost:5062
+
+### Créer une partie : 201, en-tête Location, phase Setup, version 0
+# @name create
+POST {{api}}/games
+
+### Lire l'état d'une partie (reprise après rechargement) : 200
+GET {{api}}/games/{{create.response.body.$.id}}
+
+### Tirer avant le démarrage, même hors grille : 409 NotStarted (la phase est jugée avant les bornes)
+POST {{api}}/games/{{create.response.body.$.id}}/shots
 Content-Type: application/json
 
-{ "name": "Stylo", "price": 2.50 }
+{ "column": 10, "row": 0, "expectedVersion": 0 }
+
+### Démarrer la partie : 200, tirs d'ouverture de l'ordinateur s'il commence, version 1
+# @name start
+POST {{api}}/games/{{create.response.body.$.id}}/start
+
+### Démarrer une seconde fois : 409 AlreadyStarted
+POST {{api}}/games/{{create.response.body.$.id}}/start
+
+### Tirer : 200, résultat du tir, tirs de l'ordinateur, état avec la version suivante
+# @name fire
+POST {{api}}/games/{{create.response.body.$.id}}/shots
+Content-Type: application/json
+
+{ "column": 0, "row": 0, "expectedVersion": {{start.response.body.$.state.version}} }
+
+### Retirer sur la même case avec la version à jour : 409 AlreadyTargeted
+POST {{api}}/games/{{create.response.body.$.id}}/shots
+Content-Type: application/json
+
+{ "column": 0, "row": 0, "expectedVersion": {{fire.response.body.$.state.version}} }
+
+### Tirer depuis une version dépassée : 409 StaleVersion, la partie ne change pas
+POST {{api}}/games/{{create.response.body.$.id}}/shots
+Content-Type: application/json
+
+{ "column": 5, "row": 5, "expectedVersion": 0 }
+
+### Tirer hors grille sur une partie démarrée : 400, erreur sur la clé target
+POST {{api}}/games/{{create.response.body.$.id}}/shots
+Content-Type: application/json
+
+{ "column": 10, "row": 0, "expectedVersion": {{fire.response.body.$.state.version}} }
+
+### Tirer sans colonne : 400, erreur sur le champ Column
+POST {{api}}/games/{{create.response.body.$.id}}/shots
+Content-Type: application/json
+
+{ "row": 4, "expectedVersion": {{fire.response.body.$.state.version}} }
+
+### Lire une partie inconnue (par exemple après un redémarrage du serveur) : 404
+GET {{api}}/games/00000000-0000-0000-0000-000000000000
