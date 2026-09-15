@@ -30,6 +30,8 @@ public sealed class Board(int width, int height, IEnumerable<Ship> ships)
 
     // Construite depuis les réponses déjà données, jamais depuis la flotte : ce qui n'a pas été annoncé ne peut pas sortir.
     public RevealedBoard Reveal() => new(
+        Width: width,
+        Height: height,
         Misses: answers.Where(answer => answer.Value.Outcome == ShotOutcome.Miss).Select(answer => answer.Key).ToFrozenSet(),
         Hits: answers.Where(answer => answer.Value.Outcome is ShotOutcome.Hit or ShotOutcome.Sunk).Select(answer => answer.Key).ToFrozenSet(),
         SunkShips: [.. answers.Values.Select(answer => answer.SunkShip).OfType<Ship>().Select(ship => ship.Cells)]);

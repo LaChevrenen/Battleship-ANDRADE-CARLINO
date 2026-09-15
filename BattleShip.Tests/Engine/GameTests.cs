@@ -229,15 +229,33 @@ public sealed class GameTests
             game.PlayerFire(new(0, 0), new ScriptedTargets().Next).PlayerShot);
     }
 
+    [Fact]
+    public void L_ordinateur_choisit_sa_case_a_partir_de_la_vue_de_la_grille_du_joueur()
+    {
+        var game = GameStartedByPlayer();
+        var computer = new ScriptedTargets(new(0, 0), Water);
+
+        game.PlayerFire(Water, computer.Next);
+
+        var firstView = computer.Views[0];
+        // Le raté du joueur est sur la grille de l'ordinateur : il ne doit pas apparaître ici.
+        Assert.Empty(firstView.Misses);
+        Assert.Empty(firstView.Hits);
+        Assert.Equal((10, 10), (firstView.Width, firstView.Height));
+        Assert.Equivalent(new[] { new Coordinate(0, 0) }, computer.Views[1].Hits, strict: true);
+    }
+
     private sealed class ScriptedTargets(params Coordinate[] targets)
     {
         private readonly Queue<Coordinate> remaining = new(targets);
 
-        public int Calls { get; private set; }
+        public int Calls => Views.Count;
 
-        public Coordinate Next()
+        public List<RevealedBoard> Views { get; } = [];
+
+        public Coordinate Next(RevealedBoard view)
         {
-            Calls++;
+            Views.Add(view);
             Assert.True(remaining.Count > 0, "L'ordinateur a joué un coup non prévu par le scénario.");
             return remaining.Dequeue();
         }

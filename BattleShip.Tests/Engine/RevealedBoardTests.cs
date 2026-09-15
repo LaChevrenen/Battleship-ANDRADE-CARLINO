@@ -19,6 +19,15 @@ public sealed class RevealedBoardTests
     }
 
     [Fact]
+    public void La_vue_porte_les_dimensions_de_la_grille()
+    {
+        var view = new Board(7, 5, [new Ship([new(2, 2)])]).Reveal();
+
+        Assert.Equal(7, view.Width);
+        Assert.Equal(5, view.Height);
+    }
+
+    [Fact]
     public void Un_tir_a_l_eau_est_revele_comme_rate_et_rien_d_autre()
     {
         var board = new Board(10, 10, [new Ship([new(2, 2), new(3, 2)])]);

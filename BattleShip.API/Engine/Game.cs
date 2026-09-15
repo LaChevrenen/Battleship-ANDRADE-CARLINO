@@ -17,7 +17,7 @@ public sealed class Game(Board playerBoard, Board computerBoard, Random random)
     public static Game CreateWithRandomFleets(Random random) =>
         new(PlaceDefaultFleet(random), PlaceDefaultFleet(random), random);
 
-    public bool TryStart(Func<Coordinate> chooseComputerTarget, out IReadOnlyList<ComputerShot> computerShots)
+    public bool TryStart(Func<RevealedBoard, Coordinate> chooseComputerTarget, out IReadOnlyList<ComputerShot> computerShots)
     {
         if (Phase != GamePhase.Setup)
         {
@@ -32,21 +32,22 @@ public sealed class Game(Board playerBoard, Board computerBoard, Random random)
         return true;
     }
 
-    public PlayerTurnResult PlayerFire(Coordinate target, Func<Coordinate> chooseComputerTarget)
+    public PlayerTurnResult PlayerFire(Coordinate target, Func<RevealedBoard, Coordinate> chooseComputerTarget)
     {
         var playerShot = Fire(Side.Player, target);
         return new PlayerTurnResult(playerShot, PlayComputerTurn(chooseComputerTarget));
     }
 
     // Gardé par l'état de la partie, pas par le résultat du tir du joueur : seul un tir accepté à l'eau donne la main à l'ordinateur.
-    private List<ComputerShot> PlayComputerTurn(Func<Coordinate> chooseTarget)
+    private List<ComputerShot> PlayComputerTurn(Func<RevealedBoard, Coordinate> chooseTarget)
     {
         var shots = new List<ComputerShot>();
 
         // Un refus ne change pas le tour : si chooseTarget propose sans cesse des cases refusées, cette boucle ne termine jamais.
         while (Phase == GamePhase.InProgress && CurrentTurn == Side.Computer)
         {
-            var target = chooseTarget();
+            // L'ordinateur ne voit de la grille du joueur que ce qu'un joueur humain en saurait.
+            var target = chooseTarget(PlayerBoard.Reveal());
             var result = Fire(Side.Computer, target);
             if (result.IsAccepted)
                 shots.Add(new ComputerShot(target, result));
