@@ -5,17 +5,30 @@ using System.Text.Json.Serialization;
 using BattleShip.Models;
 using BattleShip.Models.Dtos;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace BattleShip.Tests.Api;
 
 public sealed class GameEndpointsTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
 {
+    // Graine choisie une fois, à ne plus changer. Elle produit : l'ordinateur commence et rate en (8,4) ;
+    // un tir du joueur en (0,0) est à l'eau, l'ordinateur tire une fois, la partie continue.
+    // Aucun test de cette classe ne dépend de qui commence. Un test qui a besoin d'un autre scénario
+    // utilise sa propre graine, documentée à côté de lui.
+    private const int Seed = 20260915;
+
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
         Converters = { new JsonStringEnumConverter() },
     };
 
-    private readonly HttpClient client = factory.CreateClient();
+    // Un serveur de test par test, avec son propre Random à graine : chaque test rejoue la même partie,
+    // quel que soit l'ordre dans lequel xUnit exécute les tests.
+    private readonly HttpClient client = factory
+        .WithWebHostBuilder(builder => builder.ConfigureTestServices(services => services.AddSingleton(new Random(Seed))))
+        .CreateClient();
+
 
     private async Task<GameStateDto> CreateGame()
     {
@@ -105,6 +118,18 @@ public sealed class GameEndpointsTests(WebApplicationFactory<Program> factory) :
         var created = await CreateGame();
 
         var response = await Fire(created.Id, new { column = 0, row = 0, expectedVersion = created.Version });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("NotStarted", (await Body(response)).GetProperty("rejection").GetString());
+    }
+
+    [Fact]
+    public async Task Un_tir_hors_grille_avant_le_demarrage_renvoie_409_NotStarted_et_pas_400()
+    {
+        // Le moteur juge la phase avant les bornes : une partie non démarrée refuse tout tir, même hors grille.
+        var created = await CreateGame();
+
+        var response = await Fire(created.Id, new { column = 10, row = 0, expectedVersion = created.Version });
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Equal("NotStarted", (await Body(response)).GetProperty("rejection").GetString());
