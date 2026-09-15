@@ -21,6 +21,17 @@ public sealed class BoardTests
         Assert.Equal(ShotResult.Rejected(ShotRejection.OutOfBounds), result);
     }
 
+    [Fact]
+    public void Un_tir_hors_grille_refuse_ne_laisse_aucune_trace()
+    {
+        var board = BoardWith(new Ship([new(4, 4), new(5, 4)]));
+        board.ReceiveShot(new(10, 0));
+
+        var result = board.ReceiveShot(new(10, 0));
+
+        Assert.Equal(ShotResult.Rejected(ShotRejection.OutOfBounds), result);
+    }
+
     [Theory]
     [InlineData(0, 0)]
     [InlineData(9, 0)]
