@@ -26,6 +26,8 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddSingleton<GameStore>();
 builder.Services.AddSingleton(Random.Shared);
 builder.Services.AddSingleton<IValidator<FireRequest>, FireRequestValidator>();
+builder.Services.AddSingleton<IValidator<PlaceShipRequest>, PlaceShipRequestValidator>();
+builder.Services.AddSingleton<IValidator<VersionedRequest>, VersionedRequestValidator>();
 builder.Services.AddGrpc();
 builder.Services.AddSingleton<IValidator<GetGameRequest>, GetGameRequestValidator>();
 

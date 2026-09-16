@@ -42,6 +42,8 @@ message OwnBoard {
   repeated CellList ships = 3;
   repeated Coordinate misses = 4;
   repeated Coordinate hits = 5;
+  // Longueurs qu'il reste à poser pendant la préparation ; vide une fois la partie commencée.
+  repeated int32 remaining_ship_lengths = 6;
 }
 
 message OpponentBoard {

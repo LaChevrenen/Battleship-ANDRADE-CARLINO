@@ -15,7 +15,7 @@ public static class GameDtoMapper
             game.Phase,
             game.CurrentTurn,
             game.Winner,
-            ToOwnBoardDto(game.PlayerBoard),
+            ToOwnBoardDto(game.PlayerBoard, game.RemainingShipLengths),
             // Seul accès de l'API à la grille adverse : sa vue révélée, jamais ses navires.
             ToOpponentBoardDto(game.ComputerBoard.Reveal()));
     }
@@ -29,7 +29,7 @@ public static class GameDtoMapper
     public static TurnDto ToOpeningTurnDto(IReadOnlyList<ComputerShot> computerShots, StoredGame stored) =>
         new(null, null, [.. computerShots.Select(ToComputerShotDto)], ToStateDto(stored));
 
-    private static OwnBoardDto ToOwnBoardDto(Board board)
+    private static OwnBoardDto ToOwnBoardDto(Board board, IReadOnlyList<int> remainingShipLengths)
     {
         var computerShots = board.Reveal();
         return new OwnBoardDto(
@@ -37,7 +37,8 @@ public static class GameDtoMapper
             computerShots.Height,
             [.. board.Ships.Select(ship => ship.Cells.ToList())],
             [.. computerShots.Misses],
-            [.. computerShots.Hits]);
+            [.. computerShots.Hits],
+            [.. remainingShipLengths]);
     }
 
     private static OpponentBoardDto ToOpponentBoardDto(RevealedBoard view) =>

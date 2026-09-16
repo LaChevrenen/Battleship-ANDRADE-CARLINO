@@ -27,15 +27,11 @@ public sealed class GameEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     // Un serveur de test par test, avec son propre Random à graine : chaque test rejoue la même partie,
     // quel que soit l'ordre dans lequel xUnit exécute les tests.
     private readonly HttpClient client;
-    private readonly GameStore store;
 
-    public GameEndpointsTests(WebApplicationFactory<Program> factory)
-    {
-        var host = factory.WithWebHostBuilder(
-            builder => builder.ConfigureTestServices(services => services.AddSingleton(new Random(Seed))));
-        client = host.CreateClient();
-        store = host.Services.GetRequiredService<GameStore>();
-    }
+    public GameEndpointsTests(WebApplicationFactory<Program> factory) =>
+        client = factory
+            .WithWebHostBuilder(builder => builder.ConfigureTestServices(services => services.AddSingleton(new Random(Seed))))
+            .CreateClient();
 
     private async Task<GameStateDto> CreateGame()
     {
@@ -46,10 +42,9 @@ public sealed class GameEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     private async Task<GameStateDto> CreateStartedGame()
     {
         var created = await CreateGame();
-        // La flotte du joueur doit être posée avant de démarrer. Le pas 2 remplacera cet appel
-        // direct au moteur par la route de placement aléatoire.
-        store.TryExecute(created.Id, stored => stored.Game.TryPlaceFleetAtRandom(), out var placed);
-        Assert.True(placed);
+        // La flotte du joueur doit être posée avant de démarrer.
+        var placed = await client.PostAsJsonAsync($"/games/{created.Id}/fleet/random", new { expectedVersion = created.Version }, Json);
+        placed.EnsureSuccessStatusCode();
 
         var response = await client.PostAsync($"/games/{created.Id}/start", null);
         return (await response.Content.ReadFromJsonAsync<TurnDto>(Json))!.State;
@@ -101,7 +96,8 @@ public sealed class GameEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     public async Task Demarrer_renvoie_200_puis_409_AlreadyStarted_au_second_demarrage()
     {
         var created = await CreateGame();
-        store.TryExecute(created.Id, stored => stored.Game.TryPlaceFleetAtRandom(), out _);
+        var placed = await client.PostAsJsonAsync($"/games/{created.Id}/fleet/random", new { expectedVersion = created.Version }, Json);
+        var placedVersion = (await placed.Content.ReadFromJsonAsync<GameStateDto>(Json))!.Version;
 
         var first = await client.PostAsync($"/games/{created.Id}/start", null);
         var second = await client.PostAsync($"/games/{created.Id}/start", null);
@@ -110,7 +106,7 @@ public sealed class GameEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         var state = (await first.Content.ReadFromJsonAsync<TurnDto>(Json))!.State;
         Assert.Equal(GamePhase.InProgress, state.Phase);
         Assert.Equal(Side.Player, state.CurrentTurn);
-        Assert.Equal(1, state.Version);
+        Assert.Equal(placedVersion + 1, state.Version);
         Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
         Assert.Equal("AlreadyStarted", (await Body(second)).GetProperty("rejection").GetString());
     }

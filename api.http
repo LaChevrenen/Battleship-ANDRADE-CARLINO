@@ -1,6 +1,6 @@
 @api = http://localhost:5062
 
-### Créer une partie : 201, en-tête Location, phase Setup, version 0
+### Créer une partie : 201, en-tête Location, phase Setup, version 0, flotte du joueur à poser
 # @name create
 POST {{api}}/games
 
@@ -13,12 +13,55 @@ Content-Type: application/json
 
 { "column": 10, "row": 0, "expectedVersion": 0 }
 
-### Démarrer la partie : 200, tirs d'ouverture de l'ordinateur s'il commence, version 1
+### Démarrer sans flotte complète : 409 FleetIncomplete
+POST {{api}}/games/{{create.response.body.$.id}}/start
+
+### Poser un navire de 5 cases en A1, horizontal : 200, une longueur de moins à poser
+# @name place
+POST {{api}}/games/{{create.response.body.$.id}}/ships
+Content-Type: application/json
+
+{ "column": 0, "row": 0, "length": 5, "orientation": "Horizontal", "expectedVersion": 0 }
+
+### Poser un navire qui en touche un autre par un côté : 409 AdjacentShip
+POST {{api}}/games/{{create.response.body.$.id}}/ships
+Content-Type: application/json
+
+{ "column": 0, "row": 1, "length": 4, "orientation": "Horizontal", "expectedVersion": {{place.response.body.$.version}} }
+
+### Poser un navire qui sort de la grille : 400, erreur sur la clé origin
+### La longueur demandée doit rester disponible : le serveur vérifie d'abord ce qu'il reste à poser.
+POST {{api}}/games/{{create.response.body.$.id}}/ships
+Content-Type: application/json
+
+{ "column": 7, "row": 3, "length": 4, "orientation": "Horizontal", "expectedVersion": {{place.response.body.$.version}} }
+
+### Retirer le dernier navire posé : 200, la longueur revient dans les restantes
+# @name undo
+POST {{api}}/games/{{create.response.body.$.id}}/ships/undo
+Content-Type: application/json
+
+{ "expectedVersion": {{place.response.body.$.version}} }
+
+### Tirer toute la flotte au hasard : 200, plus rien à poser
+# @name fleet
+POST {{api}}/games/{{create.response.body.$.id}}/fleet/random
+Content-Type: application/json
+
+{ "expectedVersion": {{undo.response.body.$.version}} }
+
+### Démarrer la partie : 200, tirs d'ouverture de l'ordinateur s'il commence
 # @name start
 POST {{api}}/games/{{create.response.body.$.id}}/start
 
 ### Démarrer une seconde fois : 409 AlreadyStarted
 POST {{api}}/games/{{create.response.body.$.id}}/start
+
+### Poser un navire après le démarrage : 409 NotInSetup
+POST {{api}}/games/{{create.response.body.$.id}}/ships
+Content-Type: application/json
+
+{ "column": 0, "row": 0, "length": 5, "orientation": "Horizontal", "expectedVersion": {{start.response.body.$.state.version}} }
 
 ### Tirer : 200, résultat du tir, tirs de l'ordinateur, état avec la version suivante
 # @name fire

@@ -1,0 +1,188 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using BattleShip.Models;
+using BattleShip.Models.Dtos;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace BattleShip.Tests.Api;
+
+public sealed class PlacementEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    // Graine fixe, comme dans GameEndpointsTests : aucune de ces vérifications ne dépend de qui commence.
+    private const int Seed = 20260916;
+
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() },
+    };
+
+    private readonly HttpClient client;
+
+    public PlacementEndpointsTests(WebApplicationFactory<Program> factory) =>
+        client = factory
+            .WithWebHostBuilder(builder => builder.ConfigureTestServices(services => services.AddSingleton(new Random(Seed))))
+            .CreateClient();
+
+    private async Task<GameStateDto> CreateGame() =>
+        (await (await client.PostAsync("/games", null)).Content.ReadFromJsonAsync<GameStateDto>(Json))!;
+
+    private Task<HttpResponseMessage> PlaceShip(Guid id, int column, int row, int length, Orientation orientation, int version) =>
+        client.PostAsJsonAsync($"/games/{id}/ships", new { column, row, length, orientation = orientation.ToString(), expectedVersion = version }, Json);
+
+    private Task<HttpResponseMessage> Undo(Guid id, int version) =>
+        client.PostAsJsonAsync($"/games/{id}/ships/undo", new { expectedVersion = version }, Json);
+
+    private Task<HttpResponseMessage> PlaceAtRandom(Guid id, int version) =>
+        client.PostAsJsonAsync($"/games/{id}/fleet/random", new { expectedVersion = version }, Json);
+
+    private static async Task<GameStateDto> State(HttpResponseMessage response) =>
+        (await response.Content.ReadFromJsonAsync<GameStateDto>(Json))!;
+
+    private static async Task<string?> RejectionOf(HttpResponseMessage response) =>
+        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("rejection").GetString();
+
+    [Fact]
+    public async Task Une_partie_creee_annonce_toutes_les_longueurs_a_poser()
+    {
+        var created = await CreateGame();
+
+        Assert.Equal<int>([2, 3, 3, 4, 5], created.Player.RemainingShipLengths.Order());
+        Assert.Empty(created.Player.Ships);
+    }
+
+    [Fact]
+    public async Task Poser_un_navire_le_retire_des_longueurs_restantes_et_augmente_la_version()
+    {
+        var created = await CreateGame();
+
+        var response = await PlaceShip(created.Id, 0, 0, 5, Orientation.Horizontal, created.Version);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var state = await State(response);
+        Assert.Equal(created.Version + 1, state.Version);
+        Assert.Equal<int>([2, 3, 3, 4], state.Player.RemainingShipLengths.Order());
+        Assert.Equal<Coordinate>(
+            [new(0, 0), new(1, 0), new(2, 0), new(3, 0), new(4, 0)],
+            Assert.Single(state.Player.Ships));
+    }
+
+    [Fact]
+    public async Task Un_navire_qui_sort_de_la_grille_renvoie_400_sur_la_cle_origin()
+    {
+        var created = await CreateGame();
+
+        var response = await PlaceShip(created.Id, 7, 0, 5, Orientation.Horizontal, created.Version);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        Assert.True(body.GetProperty("errors").TryGetProperty("origin", out _));
+    }
+
+    [Theory]
+    [InlineData(2, 0, "Overlap")]
+    [InlineData(0, 1, "AdjacentShip")]
+    public async Task Un_navire_mal_place_est_refuse_avec_son_motif(int column, int row, string expectedRejection)
+    {
+        var created = await CreateGame();
+        var afterFirst = await State(await PlaceShip(created.Id, 0, 0, 5, Orientation.Horizontal, created.Version));
+
+        var response = await PlaceShip(created.Id, column, row, 4, Orientation.Horizontal, afterFirst.Version);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal(expectedRejection, await RejectionOf(response));
+        // Un refus ne consomme rien : la version et les longueurs restantes n'ont pas bougé.
+        var state = await client.GetFromJsonAsync<GameStateDto>($"/games/{created.Id}", Json);
+        Assert.Equal(afterFirst.Version, state!.Version);
+        Assert.Equal<int>([2, 3, 3, 4], state.Player.RemainingShipLengths.Order());
+    }
+
+    [Fact]
+    public async Task Poser_une_longueur_deja_epuisee_est_refuse()
+    {
+        var created = await CreateGame();
+        var afterFirst = await State(await PlaceShip(created.Id, 0, 0, 5, Orientation.Horizontal, created.Version));
+
+        var response = await PlaceShip(created.Id, 0, 5, 5, Orientation.Horizontal, afterFirst.Version);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("LengthNotAvailable", await RejectionOf(response));
+    }
+
+    [Fact]
+    public async Task Poser_depuis_une_version_depassee_est_refuse_sans_rien_changer()
+    {
+        var created = await CreateGame();
+        var afterFirst = await State(await PlaceShip(created.Id, 0, 0, 5, Orientation.Horizontal, created.Version));
+
+        var response = await PlaceShip(created.Id, 0, 5, 4, Orientation.Horizontal, created.Version);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("StaleVersion", await RejectionOf(response));
+        var state = await client.GetFromJsonAsync<GameStateDto>($"/games/{created.Id}", Json);
+        Assert.Equal(afterFirst.Version, state!.Version);
+        Assert.Single(state.Player.Ships);
+    }
+
+    [Fact]
+    public async Task Retirer_le_dernier_navire_rend_sa_longueur_puis_refuse_si_la_grille_est_vide()
+    {
+        var created = await CreateGame();
+        var afterFirst = await State(await PlaceShip(created.Id, 0, 0, 5, Orientation.Horizontal, created.Version));
+
+        var undone = await State(await Undo(created.Id, afterFirst.Version));
+
+        Assert.Empty(undone.Player.Ships);
+        Assert.Equal<int>([2, 3, 3, 4, 5], undone.Player.RemainingShipLengths.Order());
+        var empty = await Undo(created.Id, undone.Version);
+        Assert.Equal(HttpStatusCode.Conflict, empty.StatusCode);
+        Assert.Equal("NoShipToRemove", await RejectionOf(empty));
+    }
+
+    [Fact]
+    public async Task Le_tirage_aleatoire_pose_toute_la_flotte_et_permet_de_demarrer()
+    {
+        var created = await CreateGame();
+
+        var placed = await State(await PlaceAtRandom(created.Id, created.Version));
+
+        Assert.Empty(placed.Player.RemainingShipLengths);
+        Assert.Equal<int>([2, 3, 3, 4, 5], placed.Player.Ships.Select(ship => ship.Count).Order());
+        var started = await client.PostAsync($"/games/{created.Id}/start", null);
+        Assert.Equal(HttpStatusCode.OK, started.StatusCode);
+    }
+
+    [Fact]
+    public async Task Demarrer_sans_flotte_complete_est_refuse()
+    {
+        var created = await CreateGame();
+        await PlaceShip(created.Id, 0, 0, 5, Orientation.Horizontal, created.Version);
+
+        var response = await client.PostAsync($"/games/{created.Id}/start", null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("FleetIncomplete", await RejectionOf(response));
+    }
+
+    [Fact]
+    public async Task Apres_le_demarrage_la_flotte_ne_peut_plus_changer()
+    {
+        var created = await CreateGame();
+        var placed = await State(await PlaceAtRandom(created.Id, created.Version));
+        var started = (await (await client.PostAsync($"/games/{created.Id}/start", null)).Content.ReadFromJsonAsync<TurnDto>(Json))!.State;
+
+        var place = await PlaceShip(created.Id, 0, 0, 5, Orientation.Horizontal, started.Version);
+        var undo = await Undo(created.Id, started.Version);
+        var random = await PlaceAtRandom(created.Id, started.Version);
+
+        Assert.Equal("NotInSetup", await RejectionOf(place));
+        Assert.Equal("NoShipToRemove", await RejectionOf(undo));
+        Assert.Equal("NotInSetup", await RejectionOf(random));
+        var state = await client.GetFromJsonAsync<GameStateDto>($"/games/{created.Id}", Json);
+        Assert.Equal(placed.Player.Ships.Count, state!.Player.Ships.Count);
+        Assert.Equal(started.Version, state.Version);
+    }
+}

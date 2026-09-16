@@ -20,6 +20,52 @@ public sealed class StoredGame(Guid id, Game game)
         return rejection;
     }
 
+    // Les trois opérations de préparation suivent la même règle que le tir : version vérifiée d'abord,
+    // version augmentée seulement si la partie a réellement changé.
+    public bool TryPlaceShip(
+        Coordinate origin,
+        int length,
+        Orientation orientation,
+        int expectedVersion,
+        out PlacementRejection? rejection)
+    {
+        rejection = null;
+        if (expectedVersion != Version)
+            return false;
+
+        rejection = Game.TryPlaceShip(origin, length, orientation);
+        if (rejection is null)
+            Version++;
+
+        return true;
+    }
+
+    public bool TryRemoveLastShip(int expectedVersion, out bool removed)
+    {
+        removed = false;
+        if (expectedVersion != Version)
+            return false;
+
+        removed = Game.TryRemoveLastShip();
+        if (removed)
+            Version++;
+
+        return true;
+    }
+
+    public bool TryPlaceFleetAtRandom(int expectedVersion, out bool placed)
+    {
+        placed = false;
+        if (expectedVersion != Version)
+            return false;
+
+        placed = Game.TryPlaceFleetAtRandom();
+        if (placed)
+            Version++;
+
+        return true;
+    }
+
     public bool TryFire(
         Coordinate target,
         int expectedVersion,

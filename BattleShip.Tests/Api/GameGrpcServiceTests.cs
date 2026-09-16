@@ -39,8 +39,9 @@ public sealed class GameGrpcServiceTests(WebApplicationFactory<Program> factory)
         Assert.Equal(id, state.Id);
         Assert.Equal(GamePhase.Setup, state.Phase);
         Assert.False(state.HasCurrentTurn);
-        // La flotte du joueur reste à poser à la création (E0bis).
+        // La flotte du joueur reste à poser à la création (E0bis), et le contrat gRPC transporte ce qu'il reste.
         Assert.Empty(state.Player.Ships);
+        Assert.Equal<int>([2, 3, 3, 4, 5], state.Player.RemainingShipLengths.Order());
         Assert.Empty(state.Opponent.Hits);
     }
 
