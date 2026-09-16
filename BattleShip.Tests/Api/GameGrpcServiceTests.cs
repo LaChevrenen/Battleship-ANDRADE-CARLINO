@@ -67,17 +67,19 @@ public sealed class GameGrpcServiceTests(WebApplicationFactory<Program> factory)
     public async Task Le_message_grpc_ne_contient_aucune_case_de_navire_adverse_non_touchee()
     {
         // Même scénario que MaskingJsonTests : joueur en colonnes 0 à 4, ordinateur en colonnes 5 à 9,
-        // graine 1 où le joueur commence, tir en (6,1) qui touche un navire de 3 cases sans le couler.
+        // graine 1 où le joueur commence, tir qui touche un navire de 3 cases sans le couler.
+        // La case touchée est en ligne 0 exprès : protobuf omet les champs à leur valeur par défaut,
+        // donc le garde-fou ne détecte un format tronqué que si la case qu'il cherche contient un 0.
         var store = factory.Services.GetRequiredService<GameStore>();
         var id = store.Add(
             new Game(
                 new Board(10, 10, [new Ship([new(0, 0), new(0, 1), new(0, 2)]), new Ship([new(2, 5), new(3, 5)])]),
-                new Board(10, 10, [new Ship([new(6, 1), new(7, 1), new(8, 1)]), new Ship([new(9, 6), new(9, 7)])]),
+                new Board(10, 10, [new Ship([new(6, 0), new(7, 0), new(8, 0)]), new Ship([new(9, 6), new(9, 7)])]),
                 new Random(1)),
             stored => stored.Id);
         var http = factory.CreateClient();
         Assert.Contains("\"computerShots\":[]", await (await http.PostAsync($"/games/{id}/start", null)).Content.ReadAsStringAsync());
-        var fire = await http.PostAsJsonAsync($"/games/{id}/shots", new { column = 6, row = 1, expectedVersion = 1 });
+        var fire = await http.PostAsJsonAsync($"/games/{id}/shots", new { column = 6, row = 0, expectedVersion = 1 });
         Assert.Contains("\"playerOutcome\":\"Hit\"", await fire.Content.ReadAsStringAsync());
         store.TryExecute(id, stored => stored.Game.ComputerBoard.Ships.SelectMany(ship => ship.Cells).ToList(), out var computerCells);
 
@@ -85,8 +87,8 @@ public sealed class GameGrpcServiceTests(WebApplicationFactory<Program> factory)
         // Valeurs par défaut incluses : sinon une case en colonne 0 s'écrirait sans son champ column et échapperait à la recherche.
         var json = new JsonFormatter(JsonFormatter.Settings.Default.WithFormatDefaultValues(true)).Format(state);
 
-        Assert.Contains(ProtoJson(6, 1), json);
-        foreach (var cell in computerCells.Where(cell => (cell.Column, cell.Row) != (6, 1)))
+        Assert.Contains(ProtoJson(6, 0), json);
+        foreach (var cell in computerCells.Where(cell => (cell.Column, cell.Row) != (6, 0)))
             Assert.DoesNotContain(ProtoJson(cell.Column, cell.Row), json);
     }
 
