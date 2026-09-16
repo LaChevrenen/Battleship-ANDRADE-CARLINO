@@ -41,14 +41,6 @@ else
         @if (state.Phase == GamePhase.Setup)
         {
             <div class="preparation">
-                <span>Navires à poser :</span>
-                @foreach (var length in state.Player.RemainingShipLengths.Distinct().Order())
-                {
-                    var choix = length;
-                    <button class="@(choix == selectedLength ? "choisi" : null)" @onclick="() => Select(choix)">
-                        @choix cases (× @state.Player.RemainingShipLengths.Count(remaining => remaining == choix))
-                    </button>
-                }
                 <button @onclick="ToggleOrientation">
                     Orientation : @(orientation == Orientation.Horizontal ? "horizontale" : "verticale")
                 </button>
@@ -70,13 +62,22 @@ else
     }
 
     <div class="grilles">
+        @if (state.Phase == GamePhase.Setup)
+        {
+            <Port RemainingLengths="state.Player.RemainingShipLengths"
+                  SelectedLength="selectedLength"
+                  OnSelect="Select" />
+        }
+
         <Grid Title="Ma grille"
               Width="state.Player.Width"
               Height="state.Player.Height"
-              Ships="OwnShipCells"
+              Ships="state.Player.Ships"
+              SunkShips="state.Player.SunkShips"
               Misses="state.Player.Misses"
               Hits="state.Player.Hits"
               Preview="preview"
+              PreviewValid="previewValid"
               OnCellClick="PlaceShip"
               OnCellHover="ShowPreview"
               OnLeave="@(() => preview = [])" />
@@ -84,9 +85,9 @@ else
         <Grid Title="Grille adverse"
               Width="state.Opponent.Width"
               Height="state.Opponent.Height"
+              SunkShips="state.Opponent.SunkShips"
               Misses="state.Opponent.Misses"
               Hits="state.Opponent.Hits"
-              SunkCells="OpponentSunkCells"
               OnCellClick="Fire" />
     </div>
 }
@@ -102,12 +103,13 @@ else
     private int? selectedLength;
     private Orientation orientation = Orientation.Horizontal;
     private IReadOnlyCollection<Coordinate> preview = [];
+    private bool previewValid;
+
+    // Cases où le navire choisi tient, telles que le serveur les a calculées.
+    private IReadOnlyList<Coordinate> validOrigins = [];
 
     private IReadOnlyCollection<Coordinate> OwnShipCells =>
         state is null ? [] : [.. state.Player.Ships.SelectMany(ship => ship)];
-
-    private IReadOnlyCollection<Coordinate> OpponentSunkCells =>
-        state is null ? [] : [.. state.Opponent.SunkShips.SelectMany(ship => ship)];
 
     protected override Task OnParametersSetAsync()
     {
@@ -128,6 +130,7 @@ else
             state = GameStateConverter.ToDto(response);
             preview = [];
             KeepSelectionValid();
+            await RefreshValidOrigins();
         }
         catch (RpcException failure) when (failure.StatusCode == StatusCode.NotFound)
         {
@@ -143,25 +146,42 @@ else
         }
     }
 
-    private void Select(int length)
+    private async Task Select(int length)
     {
         selectedLength = length;
         preview = [];
+        await RefreshValidOrigins();
     }
 
-    private void ToggleOrientation()
+    private async Task ToggleOrientation()
     {
         orientation = orientation == Orientation.Horizontal ? Orientation.Vertical : Orientation.Horizontal;
         preview = [];
+        await RefreshValidOrigins();
     }
 
-    // Forme dessinée côté client pour l'aperçu seulement : la validité reste jugée par le serveur.
-    private void ShowPreview(Coordinate origin) =>
-        preview = selectedLength is { } length
-            ? [.. Enumerable.Range(0, length).Select(offset => orientation == Orientation.Horizontal
-                ? origin with { Column = origin.Column + offset }
-                : origin with { Row = origin.Row + offset })]
+    // La forme est dessinée ici pour l'aperçu, mais la couleur vient du serveur : le client ne
+    // fait qu'une appartenance à la liste des origines valides qu'il a reçue.
+    private void ShowPreview(Coordinate origin)
+    {
+        if (state?.Phase != GamePhase.Setup || selectedLength is not { } length)
+        {
+            preview = [];
+            return;
+        }
+
+        preview = [.. Enumerable.Range(0, length).Select(offset => orientation == Orientation.Horizontal
+            ? origin with { Column = origin.Column + offset }
+            : origin with { Row = origin.Row + offset })];
+        previewValid = validOrigins.Contains(origin);
+    }
+
+    private async Task RefreshValidOrigins()
+    {
+        validOrigins = state?.Phase == GamePhase.Setup && selectedLength is { } length
+            ? await Api.ValidOriginsAsync(Guid.Parse(Id), length, orientation)
             : [];
+    }
 
     // Un clic sur ma grille pose le navire choisi, ou retire celui qui occupe déjà la case.
     private async Task PlaceShip(Coordinate origin)
@@ -195,6 +215,8 @@ else
             state = updated;
             preview = [];
             KeepSelectionValid();
+            // Le plateau a changé : les origines valides aussi.
+            await RefreshValidOrigins();
         }
         else
         {

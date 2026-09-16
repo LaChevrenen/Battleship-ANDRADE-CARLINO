@@ -129,3 +129,22 @@ code {
 .preparation { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.75rem; }
 .preparation button.choisi { font-weight: bold; outline: 2px solid #2d6cdf; }
 .grille td.apercu { outline: 2px solid #2d6cdf; outline-offset: -2px; }
+
+/* Coques : bouts arrondis là où le navire s'arrête */
+.grille td.navire, .grille td.touche, .grille td.coule, .port .case.navire { border-radius: 0; }
+.navire.bout-g, .touche.bout-g, .coule.bout-g { border-top-left-radius: 45%; border-bottom-left-radius: 45%; }
+.navire.bout-d, .touche.bout-d, .coule.bout-d { border-top-right-radius: 45%; border-bottom-right-radius: 45%; }
+.navire.bout-h, .touche.bout-h, .coule.bout-h { border-top-left-radius: 45%; border-top-right-radius: 45%; }
+.navire.bout-b, .touche.bout-b, .coule.bout-b { border-bottom-left-radius: 45%; border-bottom-right-radius: 45%; }
+
+/* Aperçu : la couleur vient du serveur, vert si le placement est accepté */
+.grille td.apercu-ok { outline: 3px solid #2f9e44; outline-offset: -3px; }
+.grille td.apercu-ko { outline: 3px solid #c92a2a; outline-offset: -3px; }
+
+/* Port */
+.port ul { list-style: none; padding: 0; margin: 0; }
+.port li { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; }
+.port .reste { color: #555; }
+.port button.navire-port { display: inline-flex; padding: 3px; background: none; border: 1px solid transparent; cursor: pointer; }
+.port button.navire-port.choisi { border-color: #2d6cdf; background: #eef4ff; }
+.port .case.navire { display: inline-block; width: 1.6rem; height: 1.6rem; background: #9aa5ad; border: 1px solid #7d878f; }

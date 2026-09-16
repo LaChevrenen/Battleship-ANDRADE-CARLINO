@@ -1,7 +1,8 @@
 @using BattleShip.Models
 
 @* Ce composant n'applique aucune règle : il peint les listes de cases qu'on lui donne et ignore
-   à quelle grille il correspond. C'est la page qui décide ce qu'elle lui passe. *@
+   à quelle grille il correspond. C'est la page qui décide ce qu'elle lui passe, y compris si
+   l'aperçu est valide — cette validité vient du serveur. *@
 
 <div class="grille" @onmouseleave="@(() => OnLeave.InvokeAsync())">
     <h2>@Title</h2>
@@ -24,7 +25,7 @@
                     @for (var column = 0; column < Width; column++)
                     {
                         var cell = new Coordinate(column, currentRow);
-                        <td class="case @CssClass(cell) @(OnCellClick.HasDelegate ? "cliquable" : null) @(Preview.Contains(cell) ? "apercu" : null)"
+                        <td class="case @CssClass(cell) @HullClass(cell) @PreviewClass(cell) @(OnCellClick.HasDelegate ? "cliquable" : null)"
                             @onclick="@(() => OnCellClick.InvokeAsync(cell))"
                             @onmouseover="@(() => OnCellHover.InvokeAsync(cell))"></td>
                     }
@@ -38,13 +39,16 @@
     [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
     [Parameter, EditorRequired] public int Width { get; set; }
     [Parameter, EditorRequired] public int Height { get; set; }
-    [Parameter] public IReadOnlyCollection<Coordinate> Ships { get; set; } = [];
+
+    // Navires reçus groupés : c'est ce qui permet d'arrondir les bouts de coque.
+    [Parameter] public IReadOnlyList<IReadOnlyList<Coordinate>> Ships { get; set; } = [];
+    [Parameter] public IReadOnlyList<IReadOnlyList<Coordinate>> SunkShips { get; set; } = [];
     [Parameter] public IReadOnlyCollection<Coordinate> Misses { get; set; } = [];
     [Parameter] public IReadOnlyCollection<Coordinate> Hits { get; set; } = [];
-    [Parameter] public IReadOnlyCollection<Coordinate> SunkCells { get; set; } = [];
 
-    // Cases que la page veut mettre en évidence, par exemple l'aperçu d'un navire avant de le poser.
+    // Cases que la page veut mettre en évidence, et si ce placement est accepté par le serveur.
     [Parameter] public IReadOnlyCollection<Coordinate> Preview { get; set; } = [];
+    [Parameter] public bool PreviewValid { get; set; }
 
     // Le composant signale la case cliquée ou survolée ; il ne décide jamais si l'action est permise.
     [Parameter] public EventCallback<Coordinate> OnCellClick { get; set; }
@@ -53,11 +57,32 @@
     // Souris sortie de la grille : sans ça, le dernier aperçu resterait affiché.
     [Parameter] public EventCallback OnLeave { get; set; }
 
+    private IEnumerable<IReadOnlyList<Coordinate>> AllShips => Ships.Concat(SunkShips);
+
     // Ordre d'affichage seulement : une case coulée reste touchée, une case touchée porte un navire.
     private string CssClass(Coordinate cell) =>
-        SunkCells.Contains(cell) ? "coule"
+        SunkShips.Any(ship => ship.Contains(cell)) ? "coule"
         : Hits.Contains(cell) ? "touche"
         : Misses.Contains(cell) ? "rate"
-        : Ships.Contains(cell) ? "navire"
+        : Ships.Any(ship => ship.Contains(cell)) ? "navire"
         : "eau";
+
+    // Bouts de coque : une case sans voisine du même navire dans une direction en ferme le bord.
+    private string HullClass(Coordinate cell)
+    {
+        var ship = AllShips.FirstOrDefault(ship => ship.Contains(cell));
+        if (ship is null)
+            return string.Empty;
+
+        var bouts = new List<string>();
+        if (!ship.Contains(cell with { Column = cell.Column - 1 })) bouts.Add("bout-g");
+        if (!ship.Contains(cell with { Column = cell.Column + 1 })) bouts.Add("bout-d");
+        if (!ship.Contains(cell with { Row = cell.Row - 1 })) bouts.Add("bout-h");
+        if (!ship.Contains(cell with { Row = cell.Row + 1 })) bouts.Add("bout-b");
+
+        return string.Join(' ', bouts);
+    }
+
+    private string? PreviewClass(Coordinate cell) =>
+        !Preview.Contains(cell) ? null : PreviewValid ? "apercu-ok" : "apercu-ko";
 }

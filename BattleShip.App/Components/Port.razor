@@ -1,0 +1,36 @@
+@* Le port : les navires qui restent à poser, dessinés à leur vraie longueur. Un navire retiré de
+   la grille y revient tout seul, puisque la liste vient du serveur. *@
+
+<div class="port">
+    <h2>Port</h2>
+    @if (RemainingLengths.Count == 0)
+    {
+        <p>Flotte complète.</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var length in RemainingLengths.Distinct().OrderDescending())
+            {
+                var choix = length;
+                <li>
+                    <button class="navire-port @(choix == SelectedLength ? "choisi" : null)"
+                            title="Navire de @choix cases"
+                            @onclick="@(() => OnSelect.InvokeAsync(choix))">
+                        @for (var cell = 0; cell < choix; cell++)
+                        {
+                            <span class="case navire @(cell == 0 ? "bout-g" : null) @(cell == choix - 1 ? "bout-d" : null) bout-h bout-b"></span>
+                        }
+                    </button>
+                    <span class="reste">× @RemainingLengths.Count(remaining => remaining == choix)</span>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<int> RemainingLengths { get; set; } = [];
+    [Parameter] public int? SelectedLength { get; set; }
+    [Parameter] public EventCallback<int> OnSelect { get; set; }
+}
