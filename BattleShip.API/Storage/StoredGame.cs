@@ -66,6 +66,19 @@ public sealed class StoredGame(Guid id, Game game)
         return true;
     }
 
+    public bool TryMoveShipAt(Coordinate sourceCell, Coordinate targetOrigin, Orientation targetOrientation, int expectedVersion, out PlacementRejection? rejection)
+    {
+        rejection = null;
+        if (expectedVersion != Version)
+            return false;
+
+        rejection = Game.TryMoveShipAt(sourceCell, targetOrigin, targetOrientation);
+        if (rejection is null)
+            Version++;
+
+        return true;
+    }
+
     public bool TryPlaceFleetAtRandom(int expectedVersion, out PlacementRejection? rejection)
     {
         rejection = null;

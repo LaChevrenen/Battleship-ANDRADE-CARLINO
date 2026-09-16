@@ -84,6 +84,24 @@ public sealed class FleetUnderConstruction
         return true;
     }
 
+    // Déplace un navire déjà posé en une seule opération atomique : on valide sa nouvelle position
+    // avant de le retirer de la flotte, puis on le replace. Rien n'existe dans l'intervalle.
+    public PlacementRejection? TryMoveAt(Coordinate sourceCell, Coordinate targetOrigin, Orientation targetOrientation)
+    {
+        var ship = ships.FirstOrDefault(placed => placed.Occupies(sourceCell));
+        if (ship is null)
+            return PlacementRejection.NoShipHere;
+
+        var targetCells = PlacementRules.Cells(targetOrigin, ship.Cells.Count, targetOrientation);
+        var rejection = PlacementRules.Check(targetCells, Width, Height, ships.Where(placed => placed != ship));
+        if (rejection is not null)
+            return rejection;
+
+        ships.Remove(ship);
+        ships.Add(new Ship(targetCells));
+        return null;
+    }
+
     // Origines où ce navire tient, jugées par les mêmes règles que le placement lui-même.
     public IReadOnlyList<Coordinate> ValidOrigins(int length, Orientation orientation)
     {

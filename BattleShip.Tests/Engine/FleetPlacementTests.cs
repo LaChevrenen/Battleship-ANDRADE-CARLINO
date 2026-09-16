@@ -77,6 +77,34 @@ public sealed class FleetPlacementTests
     }
 
     [Fact]
+    public void Reprendre_un_navire_pose_le_replace_a_un_autre_endroit_en_une_operation_atomique()
+    {
+        var fleet = NewFleet();
+        fleet.TryPlace(new(0, 0), 3, Orientation.Horizontal);
+
+        Assert.Null(fleet.TryMoveAt(new(1, 0), new(5, 5), Orientation.Vertical));
+
+        Assert.Equal<Coordinate>([new(5, 5), new(5, 6), new(5, 7)], Ordered(Assert.Single(fleet.Ships).Cells));
+        Assert.Equal<int>([2], fleet.RemainingLengths);
+    }
+
+    [Fact]
+    public void Reprendre_un_navire_pose_avec_une_nouvelle_position_invalide_est_refuse_sans_rien_changer()
+    {
+        var fleet = NewFleet();
+        fleet.TryPlace(new(0, 0), 3, Orientation.Horizontal);
+        fleet.TryPlace(new(7, 0), 2, Orientation.Horizontal);
+
+        Assert.Equal(PlacementRejection.AdjacentShip, fleet.TryMoveAt(new(1, 0), new(6, 0), Orientation.Horizontal));
+
+        var first = fleet.Ships.Single(ship => ship.Cells.Contains(new Coordinate(0, 0)));
+        var second = fleet.Ships.Single(ship => ship.Cells.Contains(new Coordinate(7, 0)));
+
+        Assert.Equal<Coordinate>([new(0, 0), new(1, 0), new(2, 0)], Ordered(first.Cells));
+        Assert.Equal<Coordinate>([new(7, 0), new(8, 0)], Ordered(second.Cells));
+    }
+
+    [Fact]
     public void Les_origines_valides_excluent_les_cases_refusees_par_les_regles()
     {
         var fleet = NewFleet();

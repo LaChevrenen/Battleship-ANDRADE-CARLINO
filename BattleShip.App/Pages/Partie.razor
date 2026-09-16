@@ -180,16 +180,22 @@ else
 
     private Task OnWheel(WheelEventArgs wheel) => Pivot();
 
-    // Le geste dépend de ce qui est sous la souris : un navire posé pivote lui-même, sinon c'est
-    // l'orientation du prochain navire à poser qui bascule. Le serveur reste seul juge du résultat.
+    // Priorité de contexte : si un navire du port est sélectionné, la rotation touche cet aperçu,
+    // pas un navire déjà posé. Les navires posés ne tournent que quand aucun navire du port
+    // n'est actif.
     private Task Pivot()
     {
         if (state?.Phase != GamePhase.Setup)
             return Task.CompletedTask;
 
-        return hoveredCell is { } cell && OwnShipCells.Contains(cell)
-            ? Prepare(version => Api.RotateShipAsync(Guid.Parse(Id), cell, version))
-            : ToggleOrientation();
+        var decision = ShipRotation.Resolve(selectedLength, hoveredCell, OwnShipCells);
+        if (decision.RotatePortSelection)
+            return ToggleOrientation();
+
+        if (decision.RotatePlacedShip is { } cell)
+            return Prepare(version => Api.RotateShipAsync(Guid.Parse(Id), cell, version));
+
+        return Task.CompletedTask;
     }
 
     private async Task Select(int length)
@@ -209,6 +215,13 @@ else
         await RefreshValidOrigins();
     }
 
+    private IReadOnlyList<Coordinate> PreviewCellsForSelectedShip(Coordinate origin, int length)
+    {
+        return [.. Enumerable.Range(0, length).Select(offset => orientation == Orientation.Horizontal
+            ? origin with { Column = origin.Column + offset }
+            : origin with { Row = origin.Row + offset })];
+    }
+
     // La forme est dessinée ici pour l'aperçu, mais la couleur vient du serveur : le client ne
     // fait qu'une appartenance à la liste des origines valides qu'il a reçue.
     private void ShowPreview(Coordinate origin)
@@ -223,9 +236,7 @@ else
             return;
         }
 
-        preview = [.. Enumerable.Range(0, length).Select(offset => orientation == Orientation.Horizontal
-            ? origin with { Column = origin.Column + offset }
-            : origin with { Row = origin.Row + offset })];
+        preview = PreviewCellsForSelectedShip(origin, length);
         previewValid = validOrigins.Contains(origin);
     }
 
@@ -270,7 +281,13 @@ else
 
         if (OwnShipCells.Contains(origin))
         {
-            await Prepare(version => Api.RemoveShipAsync(Guid.Parse(Id), origin, version));
+            var ship = state.Player.Ships.FirstOrDefault(s => s.Contains(origin));
+            if (ship is null)
+                return;
+
+            var source = ship.First();
+            var targetOrientation = ship.Count == 1 ? orientation : ship.All(cell => cell.Row == ship[0].Row) ? Orientation.Horizontal : Orientation.Vertical;
+            await Prepare(version => Api.MoveShipAsync(Guid.Parse(Id), source, origin, targetOrientation, version));
             return;
         }
 

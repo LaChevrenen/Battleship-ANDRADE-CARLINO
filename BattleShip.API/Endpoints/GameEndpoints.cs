@@ -20,6 +20,7 @@ public static class GameEndpoints
         // POST et non DELETE : le corps porte la case visée et la version attendue.
         games.MapPost("/{id:guid}/ships/remove", RemoveShip);
         games.MapPost("/{id:guid}/ships/rotate", RotateShip);
+        games.MapPost("/{id:guid}/ships/move", MoveShip);
         games.MapPost("/{id:guid}/fleet/random", PlaceFleetAtRandom);
         games.MapPost("/{id:guid}/start", Start);
         games.MapPost("/{id:guid}/shots", Fire);
@@ -101,6 +102,28 @@ public static class GameEndpoints
         if (!store.TryExecute(
                 id,
                 stored => stored.TryRotateShipAt(cell, request.ExpectedVersion!.Value, out var rejection)
+                    ? rejection is { } reason
+                        ? TypedResults.Conflict(Rejection(reason.ToString(), Message(reason)))
+                        : Ok(GameDtoMapper.ToStateDto(stored))
+                    : TypedResults.Conflict(StaleVersion()),
+                out var result))
+            return TypedResults.NotFound();
+
+        return result;
+    }
+
+    private static async Task<Results<Ok<GameStateDto>, ValidationProblem, NotFound, Conflict<ProblemDetails>>> MoveShip(
+        Guid id, MoveShipRequest request, IValidator<MoveShipRequest> validator, GameStore store)
+    {
+        var validation = await validator.ValidateAsync(request);
+        if (!validation.IsValid)
+            return TypedResults.ValidationProblem(validation.ToDictionary());
+
+        var sourceCell = new Coordinate(request.SourceColumn!.Value, request.SourceRow!.Value);
+        var targetOrigin = new Coordinate(request.TargetColumn!.Value, request.TargetRow!.Value);
+        if (!store.TryExecute(
+                id,
+                stored => stored.TryMoveShipAt(sourceCell, targetOrigin, request.Orientation!.Value, request.ExpectedVersion!.Value, out var rejection)
                     ? rejection is { } reason
                         ? TypedResults.Conflict(Rejection(reason.ToString(), Message(reason)))
                         : Ok(GameDtoMapper.ToStateDto(stored))

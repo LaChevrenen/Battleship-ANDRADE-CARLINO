@@ -66,6 +66,18 @@ public sealed class Game(FleetUnderConstruction playerFleet, Board computerBoard
         return null;
     }
 
+    public PlacementRejection? TryMoveShipAt(Coordinate sourceCell, Coordinate targetOrigin, Orientation targetOrientation)
+    {
+        if (fleetUnderConstruction is null)
+            return PlacementRejection.NotInSetup;
+
+        var rejection = fleetUnderConstruction.TryMoveAt(sourceCell, targetOrigin, targetOrientation);
+        if (rejection is null)
+            PlayerBoard = fleetUnderConstruction.ToBoard();
+
+        return rejection;
+    }
+
     public PlacementRejection? TryPlaceFleetAtRandom()
     {
         if (fleetUnderConstruction is null)

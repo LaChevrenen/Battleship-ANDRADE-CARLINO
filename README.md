@@ -61,9 +61,11 @@ dotnet test BattleShip.slnx
 ## Fonctionnalités
 
 - Partie contre l'ordinateur sur une grille 10 × 10, flotte 5, 4, 3, 3 et 2 cases.
-- **Placement manuel de sa flotte** : choix du navire, bascule horizontal/vertical, aperçu au
-  survol, « Défaire », et « Placement aléatoire » autant de fois que voulu tant que la partie n'a
-  pas commencé. La flotte de l'ordinateur est placée par le serveur.
+- **Placement manuel de sa flotte** : port des navires restants dessinés à leur vraie longueur,
+  rotation par la touche `R` ou la molette, aperçu au survol coloré en vert ou en rouge
+  selon ce que le serveur autorise, clic sur un navire posé pour le retirer, et « Placement
+  aléatoire » autant de fois que voulu tant que la partie n'a pas commencé. La flotte de
+  l'ordinateur est placée par le serveur.
 - Toutes les règles sont appliquées côté serveur : placement, tours, rejeu tant qu'on touche,
   refus explicites, victoire.
 - Ordinateur « chasse-cible » : il tire au hasard, puis vise les cases voisines jusqu'à couler.
@@ -86,6 +88,14 @@ dotnet test BattleShip.slnx
   procédure `docs/VERIFICATION-MANUELLE.md`.
 - Les parties vivent en mémoire et n'expirent pas : un redémarrage du serveur les perd toutes, et
   la page affiche alors « Cette partie n'existe plus sur le serveur ».
+- **La rotation d'un navire n'est accessible qu'au clavier ou à la molette.** Le bouton
+  « Orientation » a été retiré au profit de la touche `R` et de la molette, et l'orientation
+  courante se lit dans le port. Sans clavier ni molette — sur un écran tactile, par exemple — il
+  n'existe plus aucun moyen de placer un navire verticalement.
+- `BattleShip.Tests` référence `BattleShip.App` avec `Aliases="app"`, et les tests d'écran
+  commencent par `extern alias app;`. Sans cet alias, les types générés depuis `battleship.proto`
+  existeraient deux fois — l'API les génère en `Both`, l'App en `Client` — et tout le projet de
+  tests ne compilerait plus (`CS0433`).
 - Le client dessine la forme d'un navire pour l'aperçu au survol, donc il connaît sa géométrie.
   Il ne juge jamais la validité d'un placement : chevauchement, contact et débordement sont
   refusés par le serveur, qui reste seul juge.
