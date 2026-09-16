@@ -22,7 +22,7 @@ public static class GameEndpoints
 
     private static Created<GameStateDto> Create(GameStore store, Random random)
     {
-        var state = store.Add(Game.CreateWithRandomFleets(random), GameDtoMapper.ToStateDto);
+        var state = store.Add(Game.CreateWithRandomComputerFleet(random), GameDtoMapper.ToStateDto);
         return TypedResults.Created($"/games/{state.Id}", state);
     }
 
@@ -55,8 +55,9 @@ public static class GameEndpoints
 
     private static Results<Ok<TurnDto>, NotFound, Conflict<ProblemDetails>> StartLocked(StoredGame stored, Random random)
     {
-        if (!stored.TryStart(ChooseComputerTarget(random), out var computerShots))
-            return TypedResults.Conflict(Rejection("AlreadyStarted", "La partie a déjà commencé."));
+        var rejection = stored.TryStart(ChooseComputerTarget(random), out var computerShots);
+        if (rejection is not null)
+            return TypedResults.Conflict(Rejection(rejection.Value.ToString(), Message(rejection.Value)));
 
         return TypedResults.Ok(GameDtoMapper.ToOpeningTurnDto(computerShots, stored));
     }
@@ -86,6 +87,13 @@ public static class GameEndpoints
         Status = StatusCodes.Status409Conflict,
         Title = title,
         Extensions = { ["rejection"] = code },
+    };
+
+    private static string Message(StartRejection reason) => reason switch
+    {
+        StartRejection.AlreadyStarted => "La partie a déjà commencé.",
+        StartRejection.FleetIncomplete => "Ta flotte n'est pas complète.",
+        _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, null),
     };
 
     private static string Message(ShotRejection reason) => reason switch

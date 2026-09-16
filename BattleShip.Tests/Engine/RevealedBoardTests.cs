@@ -88,7 +88,7 @@ public sealed class RevealedBoardTests
     public void Les_cases_de_navire_revelees_sont_exactement_les_cases_touchees_et_celles_des_navires_coules(int seed)
     {
         var random = new Random(seed);
-        var board = RandomFleetPlacer.Place(10, 10, GameRules.DefaultShipLengths, random).Board!;
+        var board = new Board(10, 10, RandomFleetPlacer.Place(10, 10, GameRules.DefaultShipLengths, random).Ships!);
         var shots = Enumerable.Range(0, 60).Select(_ => new Coordinate(random.Next(10), random.Next(10))).Distinct().ToList();
         foreach (var shot in shots)
             board.ReceiveShot(shot);

@@ -4,7 +4,7 @@ namespace BattleShip.API.Engine;
 
 public static class RandomFleetPlacer
 {
-    private static readonly (int Column, int Row)[] Directions = [(1, 0), (0, 1)];
+    private static readonly Orientation[] Orientations = [Orientation.Horizontal, Orientation.Vertical];
 
     // Un essai est une flotte complète : si un navire n'a plus de position légale, on recommence tout.
     public static PlacementResult Place(int width, int height, IReadOnlyList<int> shipLengths, Random random)
@@ -17,7 +17,7 @@ public static class RandomFleetPlacer
             attempts++;
             var ships = TryPlaceFleet(width, height, longestFirst, random);
             if (ships is not null)
-                return new PlacementResult(new Board(width, height, ships), attempts);
+                return new PlacementResult(ships, attempts);
         }
 
         // Le compteur réel, pas la constante : sinon une boucle mal bornée annoncerait quand même 1000.
@@ -27,48 +27,36 @@ public static class RandomFleetPlacer
     private static List<Ship>? TryPlaceFleet(int width, int height, int[] lengths, Random random)
     {
         var ships = new List<Ship>();
-        // Cases occupées et leurs voisines par un côté : le contact en diagonale reste autorisé.
-        var blocked = new HashSet<Coordinate>();
+        var occupied = new HashSet<Coordinate>();
 
         foreach (var length in lengths)
         {
-            var candidates = LegalPositions(width, height, length, blocked).ToList();
+            // Mêmes règles que le placement manuel : la validité est jugée par PlacementRules.
+            var candidates = LegalPositions(width, height, length, occupied).ToList();
             if (candidates.Count == 0)
                 return null;
 
-            var ship = new Ship(candidates[random.Next(candidates.Count)]);
-            ships.Add(ship);
-            foreach (var cell in ship.Cells)
-            {
-                blocked.Add(cell);
-                blocked.UnionWith(SideNeighbours(cell));
-            }
+            var cells = candidates[random.Next(candidates.Count)];
+            ships.Add(new Ship(cells));
+            occupied.UnionWith(cells);
         }
 
         return ships;
     }
 
-    private static Coordinate[] SideNeighbours(Coordinate cell) =>
-    [
-        cell with { Column = cell.Column - 1 },
-        cell with { Column = cell.Column + 1 },
-        cell with { Row = cell.Row - 1 },
-        cell with { Row = cell.Row + 1 }
-    ];
-
-    private static IEnumerable<Coordinate[]> LegalPositions(int width, int height, int length, HashSet<Coordinate> blocked)
+    // Piste si le placement devenait trop lent : reconstituer ici un ensemble de cases bloquées
+    // (cases occupées et leurs voisines) au lieu d'interroger PlacementRules pour chaque candidate.
+    // Non fait : cela remettrait la règle de contact à deux endroits.
+    private static IEnumerable<Coordinate[]> LegalPositions(int width, int height, int length, IReadOnlySet<Coordinate> occupied)
     {
-        foreach (var direction in Directions)
+        foreach (var orientation in Orientations)
         {
-            for (var column = 0; column + direction.Column * (length - 1) < width; column++)
+            for (var column = 0; column < width; column++)
             {
-                for (var row = 0; row + direction.Row * (length - 1) < height; row++)
+                for (var row = 0; row < height; row++)
                 {
-                    var cells = Enumerable.Range(0, length)
-                        .Select(i => new Coordinate(column + direction.Column * i, row + direction.Row * i))
-                        .ToArray();
-
-                    if (!cells.Any(blocked.Contains))
+                    var cells = PlacementRules.Cells(new Coordinate(column, row), length, orientation);
+                    if (PlacementRules.Check(cells, width, height, occupied) is null)
                         yield return cells;
                 }
             }

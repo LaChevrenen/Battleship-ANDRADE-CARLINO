@@ -17,14 +17,14 @@ public sealed class StoredGameTests
     }
 
     private static StoredGame NewStoredGame() =>
-        new(Guid.NewGuid(), new Game(SmallFleet(), SmallFleet(), new Random(0)));
+        new(Guid.NewGuid(), new Game(FleetUnderConstruction.Placed(10, 10, SmallFleet()), new Board(10, 10, SmallFleet()), new Random(0)));
 
-    private static Board SmallFleet() => new(10, 10, [new Ship([new(0, 0), new(1, 0)])]);
+    private static Ship[] SmallFleet() => [new Ship([new(0, 0), new(1, 0)])];
 
     private StoredGame StartedGame()
     {
         var stored = NewStoredGame();
-        Assert.True(stored.TryStart(ChooseComputerTarget, out _));
+        Assert.Null(stored.TryStart(ChooseComputerTarget, out _));
         computerCalls = 0;
         return stored;
     }
@@ -41,7 +41,7 @@ public sealed class StoredGameTests
         var stored = StartedGame();
 
         Assert.Equal(1, stored.Version);
-        Assert.False(stored.TryStart(ChooseComputerTarget, out _));
+        Assert.Equal(StartRejection.AlreadyStarted, stored.TryStart(ChooseComputerTarget, out _));
         Assert.Equal(1, stored.Version);
     }
 

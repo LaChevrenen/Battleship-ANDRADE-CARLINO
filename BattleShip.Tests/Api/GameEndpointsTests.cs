@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using BattleShip.API.Storage;
 using BattleShip.Models;
 using BattleShip.Models.Dtos;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -10,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace BattleShip.Tests.Api;
 
-public sealed class GameEndpointsTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+public sealed class GameEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
 {
     // Graine choisie une fois, à ne plus changer. Elle produit : l'ordinateur commence et rate en (8,4) ;
     // un tir du joueur en (0,0) est à l'eau, l'ordinateur tire une fois, la partie continue.
@@ -25,10 +26,16 @@ public sealed class GameEndpointsTests(WebApplicationFactory<Program> factory) :
 
     // Un serveur de test par test, avec son propre Random à graine : chaque test rejoue la même partie,
     // quel que soit l'ordre dans lequel xUnit exécute les tests.
-    private readonly HttpClient client = factory
-        .WithWebHostBuilder(builder => builder.ConfigureTestServices(services => services.AddSingleton(new Random(Seed))))
-        .CreateClient();
+    private readonly HttpClient client;
+    private readonly GameStore store;
 
+    public GameEndpointsTests(WebApplicationFactory<Program> factory)
+    {
+        var host = factory.WithWebHostBuilder(
+            builder => builder.ConfigureTestServices(services => services.AddSingleton(new Random(Seed))));
+        client = host.CreateClient();
+        store = host.Services.GetRequiredService<GameStore>();
+    }
 
     private async Task<GameStateDto> CreateGame()
     {
@@ -39,6 +46,11 @@ public sealed class GameEndpointsTests(WebApplicationFactory<Program> factory) :
     private async Task<GameStateDto> CreateStartedGame()
     {
         var created = await CreateGame();
+        // La flotte du joueur doit être posée avant de démarrer. Le pas 2 remplacera cet appel
+        // direct au moteur par la route de placement aléatoire.
+        store.TryExecute(created.Id, stored => stored.Game.TryPlaceFleetAtRandom(), out var placed);
+        Assert.True(placed);
+
         var response = await client.PostAsync($"/games/{created.Id}/start", null);
         return (await response.Content.ReadFromJsonAsync<TurnDto>(Json))!.State;
     }
@@ -60,7 +72,8 @@ public sealed class GameEndpointsTests(WebApplicationFactory<Program> factory) :
         Assert.Equal($"/games/{state.Id}", response.Headers.Location?.OriginalString);
         Assert.Equal(GamePhase.Setup, state.Phase);
         Assert.Equal(0, state.Version);
-        Assert.Equal<int>([2, 3, 3, 4, 5], state.Player.Ships.Select(ship => ship.Count).Order());
+        // La flotte du joueur reste à poser : c'est lui qui la place (E0bis).
+        Assert.Empty(state.Player.Ships);
     }
 
     [Fact]
@@ -88,6 +101,7 @@ public sealed class GameEndpointsTests(WebApplicationFactory<Program> factory) :
     public async Task Demarrer_renvoie_200_puis_409_AlreadyStarted_au_second_demarrage()
     {
         var created = await CreateGame();
+        store.TryExecute(created.Id, stored => stored.Game.TryPlaceFleetAtRandom(), out _);
 
         var first = await client.PostAsync($"/games/{created.Id}/start", null);
         var second = await client.PostAsync($"/games/{created.Id}/start", null);

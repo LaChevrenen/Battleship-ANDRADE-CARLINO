@@ -39,7 +39,8 @@ public sealed class GameGrpcServiceTests(WebApplicationFactory<Program> factory)
         Assert.Equal(id, state.Id);
         Assert.Equal(GamePhase.Setup, state.Phase);
         Assert.False(state.HasCurrentTurn);
-        Assert.Equal(5, state.Player.Ships.Count);
+        // La flotte du joueur reste à poser à la création (E0bis).
+        Assert.Empty(state.Player.Ships);
         Assert.Empty(state.Opponent.Hits);
     }
 
@@ -73,7 +74,7 @@ public sealed class GameGrpcServiceTests(WebApplicationFactory<Program> factory)
         var store = factory.Services.GetRequiredService<GameStore>();
         var id = store.Add(
             new Game(
-                new Board(10, 10, [new Ship([new(0, 0), new(0, 1), new(0, 2)]), new Ship([new(2, 5), new(3, 5)])]),
+                FleetUnderConstruction.Placed(10, 10, [new Ship([new(0, 0), new(0, 1), new(0, 2)]), new Ship([new(2, 5), new(3, 5)])]),
                 new Board(10, 10, [new Ship([new(6, 0), new(7, 0), new(8, 0)]), new Ship([new(9, 6), new(9, 7)])]),
                 new Random(1)),
             stored => stored.Id);

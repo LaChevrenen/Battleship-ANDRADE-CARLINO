@@ -11,13 +11,13 @@ public sealed class StoredGame(Guid id, Game game)
     public Game Game { get; } = game;
     public int Version { get; private set; }
 
-    public bool TryStart(Func<RevealedBoard, Coordinate> chooseComputerTarget, out IReadOnlyList<ComputerShot> computerShots)
+    public StartRejection? TryStart(Func<RevealedBoard, Coordinate> chooseComputerTarget, out IReadOnlyList<ComputerShot> computerShots)
     {
-        if (!Game.TryStart(chooseComputerTarget, out computerShots))
-            return false;
+        var rejection = Game.TryStart(chooseComputerTarget, out computerShots);
+        if (rejection is null)
+            Version++;
 
-        Version++;
-        return true;
+        return rejection;
     }
 
     public bool TryFire(

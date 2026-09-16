@@ -8,9 +8,10 @@ public sealed class GameTests
     private static readonly Coordinate Water = new(9, 9);
 
     // Même flotte réduite pour les deux camps : un navire en (0,0)-(1,0) et un navire en (5,5).
-    private static Board SmallFleet() => new(10, 10, [new Ship([new(0, 0), new(1, 0)]), new Ship([new(5, 5)])]);
+    private static Ship[] SmallFleet() => [new Ship([new(0, 0), new(1, 0)]), new Ship([new(5, 5)])];
 
-    private static Game NewGame(int seed) => new(SmallFleet(), SmallFleet(), new Random(seed));
+    private static Game NewGame(int seed) =>
+        new(FleetUnderConstruction.Placed(10, 10, SmallFleet()), new Board(10, 10, SmallFleet()), new Random(seed));
 
     // Cherche une graine plutôt que de supposer comment Game traduit le tirage en camp.
     private static int SeedWhereFirstShooterIs(Side firstShooter)
@@ -32,7 +33,7 @@ public sealed class GameTests
     private static Game GameStartedByPlayer()
     {
         var game = NewGame(SeedWhereFirstShooterIs(Side.Player));
-        Assert.True(game.TryStart(new ScriptedTargets().Next, out _));
+        Assert.Null(game.TryStart(new ScriptedTargets().Next, out _));
         return game;
     }
 
@@ -50,14 +51,15 @@ public sealed class GameTests
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
-    public void Les_deux_camps_recoivent_chacun_la_flotte_par_defaut(int seed)
+    public void Une_partie_creee_place_la_flotte_de_l_ordinateur_et_laisse_celle_du_joueur_a_poser(int seed)
     {
-        var game = Game.CreateWithRandomFleets(new Random(seed));
+        var game = Game.CreateWithRandomComputerFleet(new Random(seed));
 
         int[] expected = [.. GameRules.DefaultShipLengths.Order()];
-        Assert.Equal(expected, game.PlayerBoard.Ships.Select(ship => ship.Cells.Count).Order());
         Assert.Equal(expected, game.ComputerBoard.Ships.Select(ship => ship.Cells.Count).Order());
-        Assert.NotSame(game.PlayerBoard, game.ComputerBoard);
+        Assert.Empty(game.PlayerBoard.Ships);
+        // Même flotte pour les deux camps : celle du joueur reste entièrement à poser.
+        Assert.Equal(expected, game.RemainingShipLengths.Order());
     }
 
     [Fact]
@@ -80,7 +82,7 @@ public sealed class GameTests
         var playerBoard = game.PlayerBoard;
         var computerBoard = game.ComputerBoard;
 
-        Assert.False(game.TryStart(new ScriptedTargets().Next, out var computerShots));
+        Assert.Equal(StartRejection.AlreadyStarted, game.TryStart(new ScriptedTargets().Next, out var computerShots));
 
         Assert.Empty(computerShots);
         Assert.Equal(GamePhase.InProgress, game.Phase);
@@ -99,7 +101,7 @@ public sealed class GameTests
         var game = NewGame(SeedWhereFirstShooterIs(Side.Computer));
         var computer = new ScriptedTargets(new(5, 5), Water);
 
-        Assert.True(game.TryStart(computer.Next, out var computerShots));
+        Assert.Null(game.TryStart(computer.Next, out var computerShots));
 
         Assert.Equal<ShotOutcome?>([ShotOutcome.Sunk, ShotOutcome.Miss], computerShots.Select(shot => shot.Result.Outcome));
         Assert.Equal(Side.Player, game.CurrentTurn);
@@ -258,7 +260,10 @@ public sealed class GameTests
         Coordinate ChooseComputerTarget(RevealedBoard view) => HuntTargetStrategy.ChooseTarget(view, strategyRandom);
         // Grille de l'ordinateur à un seul navire : le joueur a 99 cases d'eau, assez pour rendre la main à chaque tour.
         var computerShip = new Coordinate(9, 9);
-        var game = new Game(SmallFleet(), new Board(10, 10, [new Ship([computerShip])]), new Random(seed));
+        var game = new Game(
+            FleetUnderConstruction.Placed(10, 10, SmallFleet()),
+            new Board(10, 10, [new Ship([computerShip])]),
+            new Random(seed));
         game.TryStart(ChooseComputerTarget, out _);
 
         var playerWater = Enumerable.Range(0, 100).Select(i => new Coordinate(i % 10, i / 10)).Where(cell => cell != computerShip);

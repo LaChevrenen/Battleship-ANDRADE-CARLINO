@@ -20,8 +20,9 @@ public sealed class HuntTargetStrategyTests(ITestOutputHelper output)
     private static int ShotsToSinkRandomFleet(int seed)
     {
         var random = new Random(seed);
-        var board = RandomFleetPlacer.Place(
-            GameRules.GridSize, GameRules.GridSize, GameRules.DefaultShipLengths, random).Board!;
+        var placement = RandomFleetPlacer.Place(
+            GameRules.GridSize, GameRules.GridSize, GameRules.DefaultShipLengths, random);
+        var board = new Board(GameRules.GridSize, GameRules.GridSize, placement.Ships!);
         var shots = 0;
 
         // Chaque tour de boucle est borné par une assertion : une stratégie défaillante fait échouer le test au lieu de le bloquer.

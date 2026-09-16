@@ -2,9 +2,12 @@ using BattleShip.Models;
 
 namespace BattleShip.API.Engine;
 
-public sealed class Game(Board playerBoard, Board computerBoard, Random random)
+public sealed class Game(FleetUnderConstruction playerFleet, Board computerBoard, Random random)
 {
-    public Board PlayerBoard { get; } = playerBoard;
+    // Lâchée au démarrage : sans elle, plus rien ne peut modifier la flotte du joueur.
+    private FleetUnderConstruction? fleetUnderConstruction = playerFleet;
+
+    public Board PlayerBoard { get; private set; } = playerFleet.ToBoard();
     public Board ComputerBoard { get; } = computerBoard;
 
     public GamePhase Phase { get; private set; } = GamePhase.Setup;
@@ -14,22 +17,62 @@ public sealed class Game(Board playerBoard, Board computerBoard, Random random)
 
     public Side? Winner { get; private set; }
 
-    public static Game CreateWithRandomFleets(Random random) =>
-        new(PlaceDefaultFleet(random), PlaceDefaultFleet(random), random);
+    public IReadOnlyList<int> RemainingShipLengths => fleetUnderConstruction?.RemainingLengths ?? [];
 
-    public bool TryStart(Func<RevealedBoard, Coordinate> chooseComputerTarget, out IReadOnlyList<ComputerShot> computerShots)
+    // Seul l'ordinateur est placé à la création : le joueur pose sa flotte lui-même, ou la tire au hasard.
+    public static Game CreateWithRandomComputerFleet(Random random) =>
+        new(new FleetUnderConstruction(GameRules.GridSize, GameRules.GridSize, GameRules.DefaultShipLengths),
+            PlaceDefaultFleet(random),
+            random);
+
+    public PlacementRejection? TryPlaceShip(Coordinate origin, int length, Orientation orientation)
     {
-        if (Phase != GamePhase.Setup)
-        {
-            computerShots = [];
-            return false;
-        }
+        if (fleetUnderConstruction is null)
+            return PlacementRejection.NotInSetup;
 
+        var rejection = fleetUnderConstruction.TryPlace(origin, length, orientation);
+        if (rejection is null)
+            PlayerBoard = fleetUnderConstruction.ToBoard();
+
+        return rejection;
+    }
+
+    public bool TryRemoveLastShip()
+    {
+        if (fleetUnderConstruction?.TryRemoveLast() is not true)
+            return false;
+
+        PlayerBoard = fleetUnderConstruction.ToBoard();
+        return true;
+    }
+
+    public bool TryPlaceFleetAtRandom()
+    {
+        if (fleetUnderConstruction?.TryPlaceAtRandom(random) is not true)
+            return false;
+
+        PlayerBoard = fleetUnderConstruction.ToBoard();
+        return true;
+    }
+
+    public StartRejection? TryStart(Func<RevealedBoard, Coordinate> chooseComputerTarget, out IReadOnlyList<ComputerShot> computerShots)
+    {
+        computerShots = [];
+
+        if (fleetUnderConstruction is null)
+            return StartRejection.AlreadyStarted;
+
+        if (!fleetUnderConstruction.IsComplete)
+            return StartRejection.FleetIncomplete;
+
+        // La flotte est figée ici : l'objet modifiable disparaît, la Board construite ne bouge plus.
+        PlayerBoard = fleetUnderConstruction.ToBoard();
+        fleetUnderConstruction = null;
         Phase = GamePhase.InProgress;
         CurrentTurn = random.Next(2) == 0 ? Side.Player : Side.Computer;
         // Si l'ordinateur commence, il joue tout de suite : aucune méthode publique ne rend la main avec son tour en attente.
         computerShots = PlayComputerTurn(chooseComputerTarget);
-        return true;
+        return null;
     }
 
     public PlayerTurnResult PlayerFire(Coordinate target, Func<RevealedBoard, Coordinate> chooseComputerTarget)
@@ -90,6 +133,8 @@ public sealed class Game(Board playerBoard, Board computerBoard, Random random)
 
     // La flotte par défaut tient toujours sur la grille par défaut : un échec ici est un bug, pas une situation de jeu.
     private static Board PlaceDefaultFleet(Random random) =>
-        RandomFleetPlacer.Place(GameRules.GridSize, GameRules.GridSize, GameRules.DefaultShipLengths, random).Board
-        ?? throw new InvalidOperationException("La flotte par défaut n'a pas pu être placée.");
+        RandomFleetPlacer.Place(GameRules.GridSize, GameRules.GridSize, GameRules.DefaultShipLengths, random).Ships
+            is { } ships
+            ? new Board(GameRules.GridSize, GameRules.GridSize, ships)
+            : throw new InvalidOperationException("La flotte par défaut n'a pas pu être placée.");
 }

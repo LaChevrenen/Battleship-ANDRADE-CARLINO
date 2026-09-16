@@ -13,7 +13,7 @@ public sealed class GameStoreTests
     public void Une_partie_ajoutee_est_retrouvee_par_son_identifiant()
     {
         var store = new GameStore();
-        var game = Game.CreateWithRandomFleets(new Random(0));
+        var game = Game.CreateWithRandomComputerFleet(new Random(0));
         var id = store.Add(game, stored => stored.Id);
 
         Assert.True(store.TryExecute(id, stored => stored.Game, out var found));
@@ -38,7 +38,9 @@ public sealed class GameStoreTests
     {
         // Test probabiliste : sans verrou, la course peut ne pas se produire pendant cette exécution.
         var store = new GameStore();
-        var id = store.Add(Game.CreateWithRandomFleets(new Random(0)), stored => stored.Id);
+        var game = Game.CreateWithRandomComputerFleet(new Random(0));
+        Assert.True(game.TryPlaceFleetAtRandom());
+        var id = store.Add(game, stored => stored.Id);
         store.TryExecute(id, stored => stored.TryStart(ChooseComputerTarget, out _), out _);
         var accepted = 0;
 

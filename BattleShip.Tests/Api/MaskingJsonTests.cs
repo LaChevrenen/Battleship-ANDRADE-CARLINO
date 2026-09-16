@@ -26,7 +26,7 @@ public sealed class MaskingJsonTests(WebApplicationFactory<Program> factory) : I
     private Guid AddGameWithSeparatedFleets() =>
         Store.Add(
             new Game(
-                new Board(10, 10, [new Ship([new(0, 0), new(0, 1), new(0, 2)]), new Ship([new(2, 5), new(3, 5)])]),
+                FleetUnderConstruction.Placed(10, 10, [new Ship([new(0, 0), new(0, 1), new(0, 2)]), new Ship([new(2, 5), new(3, 5)])]),
                 new Board(10, 10, [new Ship([HitCell, new(7, 1), new(8, 1)]), new Ship([new(9, 6), new(9, 7)])]),
                 new Random(PlayerStartsSeed)),
             stored => stored.Id);

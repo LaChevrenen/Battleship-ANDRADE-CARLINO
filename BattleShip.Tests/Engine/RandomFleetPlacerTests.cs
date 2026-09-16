@@ -1,4 +1,4 @@
-using BattleShip.API.Engine;
+﻿using BattleShip.API.Engine;
 using BattleShip.Models;
 
 namespace BattleShip.Tests.Engine;
@@ -12,8 +12,8 @@ public sealed class RandomFleetPlacerTests
         var result = RandomFleetPlacer.Place(
             GameRules.GridSize, GameRules.GridSize, GameRules.DefaultShipLengths, new Random(seed));
 
-        Assert.NotNull(result.Board);
-        return result.Board;
+        Assert.NotNull(result.Ships);
+        return new Board(GameRules.GridSize, GameRules.GridSize, result.Ships);
     }
 
     [Theory]
@@ -74,7 +74,7 @@ public sealed class RandomFleetPlacerTests
         // Un navire d'une case n'a aucune voisine interne : seul le blocage de sa propre case empêche le chevauchement.
         var result = RandomFleetPlacer.Place(1, 1, [1, 1], new Random(0));
 
-        Assert.Null(result.Board);
+        Assert.Null(result.Ships);
     }
 
     [Theory]
@@ -97,7 +97,7 @@ public sealed class RandomFleetPlacerTests
         // Sur 2x2, deux navires d'une case ne peuvent se placer qu'en diagonale l'un de l'autre.
         var result = RandomFleetPlacer.Place(2, 2, [1, 1], new Random(seed));
 
-        Assert.NotNull(result.Board);
+        Assert.NotNull(result.Ships);
     }
 
     [Fact]
@@ -105,7 +105,7 @@ public sealed class RandomFleetPlacerTests
     {
         var result = RandomFleetPlacer.Place(3, 3, [5], new Random(0));
 
-        Assert.Null(result.Board);
+        Assert.Null(result.Ships);
         Assert.Equal(1000, result.AttemptsUsed);
     }
 
@@ -115,7 +115,7 @@ public sealed class RandomFleetPlacerTests
         // Sur 5x1, le premier navire de 3 se place toujours mais bloque la place du second.
         var result = RandomFleetPlacer.Place(5, 1, [3, 3], new Random(0));
 
-        Assert.Null(result.Board);
+        Assert.Null(result.Ships);
         Assert.Equal(1000, result.AttemptsUsed);
     }
 
@@ -125,7 +125,7 @@ public sealed class RandomFleetPlacerTests
         // Sur 1x1, un navire d'une case n'a qu'une position : le premier essai réussit toujours.
         var result = RandomFleetPlacer.Place(1, 1, [1], new Random(0));
 
-        Assert.NotNull(result.Board);
+        Assert.NotNull(result.Ships);
         Assert.Equal(1, result.AttemptsUsed);
     }
 
