@@ -188,15 +188,14 @@ public sealed class FleetPlacementTests
     }
 
     [Fact]
-    public void Un_navire_pivote_autour_de_son_origine()
+    public void Un_navire_pivote_autour_de_la_case_selectionnee()
     {
         var fleet = NewFleet();
-        fleet.TryPlace(new(0, 0), 3, Orientation.Horizontal);
+        fleet.TryPlace(new(2, 2), 3, Orientation.Horizontal);
 
-        // Une case du milieu : le joueur survole n'importe où sur le navire.
-        Assert.Null(fleet.TryRotateAt(new(1, 0)));
+        Assert.Null(fleet.TryRotateAt(new(3, 2)));
 
-        Assert.Equal<Coordinate>([new(0, 0), new(0, 1), new(0, 2)], Ordered(Assert.Single(fleet.Ships).Cells));
+        Assert.Equal<Coordinate>([new(3, 1), new(3, 2), new(3, 3)], Ordered(Assert.Single(fleet.Ships).Cells));
         Assert.Equal<int>([2], fleet.RemainingLengths);
     }
 
@@ -245,7 +244,7 @@ public sealed class FleetPlacementTests
         fleet.TryPlace(new(0, 0), 3, Orientation.Horizontal);
         fleet.TryPlace(new(1, 2), 2, Orientation.Horizontal);
 
-        Assert.Equal(PlacementRejection.AdjacentShip, fleet.TryRotateAt(new(2, 0)));
+        Assert.Equal(PlacementRejection.AdjacentShip, fleet.TryRotateAt(new(0, 0)));
 
         Assert.Equal(2, fleet.Ships.Count);
         Assert.Contains(fleet.Ships, ship => ship.Occupies(new(2, 0)));
@@ -270,7 +269,7 @@ public sealed class FleetPlacementTests
         game.TryPlaceShip(new(0, 0), 3, Orientation.Horizontal);
         var before = game.PlayerBoard;
 
-        Assert.Null(game.TryRotateShipAt(new(1, 0)));
+        Assert.Null(game.TryRotateShipAt(new(0, 0)));
 
         Assert.NotSame(before, game.PlayerBoard);
         Assert.Equal<Coordinate>([new(0, 0), new(0, 1), new(0, 2)], Ordered(Assert.Single(game.PlayerBoard.Ships).Cells));

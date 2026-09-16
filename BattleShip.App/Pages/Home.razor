@@ -2,8 +2,10 @@
 @using BattleShip.App.Services
 @using BattleShip.Models
 @using BattleShip.Models.Dtos
+@using Microsoft.JSInterop
 @inject GameApiClient Api
 @inject NavigationManager Navigation
+@inject IJSRuntime Js
 
 <PageTitle>Bataille navale</PageTitle>
 
@@ -13,10 +15,20 @@
     <p>Une partie contre l'ordinateur, sur une grille de 10 × 10. Les flottes sont placées par le serveur.</p>
 </div>
 
-<button class="new-game-button home-new-game" @onclick="NewGame" disabled="@creating">
-    <span class="new-game-icon" aria-hidden="true">+</span>
-    <span>@(creating ? "Création en cours..." : "Nouvelle partie")</span>
-</button>
+<div class="new-game-controls">
+    <div class="difficulty-control">
+        <label for="difficulty">Niveau de l'ordinateur</label>
+        <select id="difficulty" @bind="difficulty" disabled="@creating">
+            <option value="@AiDifficulty.Easy">Facile</option>
+            <option value="@AiDifficulty.Normal">Normal</option>
+            <option value="@AiDifficulty.Hard">Difficile</option>
+        </select>
+    </div>
+    <button class="new-game-button home-new-game" @onclick="NewGame" disabled="@creating">
+        <span class="new-game-icon" aria-hidden="true">+</span>
+        <span>@(creating ? "Création en cours..." : "Nouvelle partie")</span>
+    </button>
+</div>
 
 @if (loading)
 {
@@ -94,6 +106,7 @@ else if (games.Any())
 @code {
     private bool creating;
     private bool loading = true;
+    private AiDifficulty difficulty = AiDifficulty.Normal;
     private string? error;
     private IReadOnlyList<GameSummaryDto> games = [];
 
@@ -120,10 +133,11 @@ else if (games.Any())
     {
         creating = true;
         error = null;
+        await Js.InvokeVoidAsync("battleMusic", false);
 
         try
         {
-            var result = await Api.CreateAsync();
+            var result = await Api.CreateAsync(difficulty);
             if (result.Game is { } game)
             {
                 Navigation.NavigateTo($"/partie/{game.Id}");

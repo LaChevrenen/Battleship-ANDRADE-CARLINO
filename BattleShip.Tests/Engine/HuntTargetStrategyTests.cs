@@ -128,4 +128,24 @@ public sealed class HuntTargetStrategyTests(ITestOutputHelper output)
             ChosenOverSeeds(view),
             strict: true);
     }
+
+    [Fact]
+    public void Le_mode_facile_ne_tire_jamais_une_case_deja_visee()
+    {
+        var view = View(2, 2, misses: [new(0, 0)], hits: [new(1, 0)]);
+
+        var target = RandomTargetStrategy.ChooseTarget(view, new Random(0));
+
+        Assert.Contains(target, new[] { new Coordinate(0, 1), new Coordinate(1, 1) });
+    }
+
+    [Fact]
+    public void Le_mode_difficile_priorise_une_case_compatible_avec_une_touche()
+    {
+        var view = View(5, 1, misses: [new(4, 0)], hits: [new(1, 0)]);
+
+        var target = ProbabilityTargetStrategy.ChooseTarget(view, new Random(0));
+
+        Assert.Contains(target, new[] { new Coordinate(0, 0), new Coordinate(2, 0) });
+    }
 }

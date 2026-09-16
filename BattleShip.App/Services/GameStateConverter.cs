@@ -26,11 +26,26 @@ public static class GameStateConverter
             state.Opponent.Height,
             [.. state.Opponent.Misses.Select(ToDto)],
             [.. state.Opponent.Hits.Select(ToDto)],
-            [.. state.Opponent.SunkShips.Select(ToCells)]));
+            [.. state.Opponent.SunkShips.Select(ToCells)]),
+        new GameStatisticsDto(
+            state.Statistics.TotalShots,
+            state.Statistics.SuccessfulShots,
+            state.Statistics.MissedShots,
+            state.Statistics.AccuracyPercentage,
+            state.Statistics.HasDurationSeconds ? state.Statistics.DurationSeconds : null,
+            [.. state.Statistics.History.Select(ToHistory)]));
 
     private static IReadOnlyList<Coordinate> ToCells(Proto.CellList ship) => [.. ship.Cells.Select(ToDto)];
 
     private static Coordinate ToDto(Proto.Coordinate cell) => new(cell.Column, cell.Row);
+
+    private static ShotHistoryDto ToHistory(Proto.ShotHistory shot) => new(ToDto(shot.Target), shot.Outcome switch
+    {
+        Proto.ShotOutcome.Miss => ShotOutcome.Miss,
+        Proto.ShotOutcome.Hit => ShotOutcome.Hit,
+        Proto.ShotOutcome.Sunk => ShotOutcome.Sunk,
+        _ => throw new ArgumentOutOfRangeException(nameof(shot), shot.Outcome, null),
+    });
 
     // Correspondance explicite : en proto la valeur 0 est « non renseigné », les numéros ne coïncident pas.
     private static GamePhase ToDto(Proto.GamePhase phase) => phase switch

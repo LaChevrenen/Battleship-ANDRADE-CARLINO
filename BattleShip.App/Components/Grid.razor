@@ -27,7 +27,7 @@
                     @for (var column = 0; column < Width; column++)
                     {
                         var cell = new Coordinate(column, currentRow);
-                        <td class="case @CssClass(cell) @HullClass(cell) @PreviewClass(cell) @(OnCellClick.HasDelegate ? "cliquable" : null)"
+                        <td class="case @CssClass(cell) @HullClass(cell) @PreviewClass(cell) @AnimationClass(cell) @(OnCellClick.HasDelegate ? "cliquable" : null)"
                             @onclick="@(() => OnCellClick.InvokeAsync(cell))"
                             @onmouseenter="@(() => OnCellHover.InvokeAsync(cell))"
                             @onselectstart:preventDefault
@@ -54,6 +54,8 @@
     // Cases que la page veut mettre en évidence, et si ce placement est accepté par le serveur.
     [Parameter] public IReadOnlyCollection<Coordinate> Preview { get; set; } = [];
     [Parameter] public bool PreviewValid { get; set; }
+    [Parameter] public Coordinate? AnimatedCell { get; set; }
+    [Parameter] public ShotOutcome? AnimatedOutcome { get; set; }
 
     // Le composant signale la case cliquée ou survolée ; il ne décide jamais si l'action est permise.
     [Parameter] public EventCallback<Coordinate> OnCellClick { get; set; }
@@ -89,4 +91,7 @@
 
     private string? PreviewClass(Coordinate cell) =>
         !Preview.Contains(cell) ? null : PreviewValid ? "apercu-ok" : "apercu-ko";
+
+    private string? AnimationClass(Coordinate cell) =>
+        AnimatedCell != cell || AnimatedOutcome is null ? null : "tir-anime";
 }

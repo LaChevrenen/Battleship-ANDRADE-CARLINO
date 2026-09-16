@@ -21,14 +21,14 @@ public sealed class ShipSelectionTests
     }
 
     [Fact]
-    public void Une_longueur_epuisee_laisse_la_place_a_la_plus_petite_restante()
+    public void Une_longueur_epuisee_ne_cree_pas_une_nouvelle_selection()
     {
-        Assert.Equal(3, ShipSelection.Keep(current: 5, remaining: [4, 3, 3]));
+        Assert.Null(ShipSelection.Keep(current: 5, remaining: [4, 3, 3]));
     }
 
     [Fact]
-    public void Sans_choix_prealable_la_plus_petite_longueur_est_choisie()
+    public void Sans_choix_prealable_aucune_longueur_n_est_choisie()
     {
-        Assert.Equal(2, ShipSelection.Keep(current: null, remaining: [5, 4, 3, 3, 2]));
+        Assert.Null(ShipSelection.Keep(current: null, remaining: [5, 4, 3, 3, 2]));
     }
 }

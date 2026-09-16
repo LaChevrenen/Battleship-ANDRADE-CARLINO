@@ -15,9 +15,9 @@ public sealed class GameApiClient(HttpClient http)
         Converters = { new JsonStringEnumConverter() },
     };
 
-    public async Task<CreationResult> CreateAsync()
+    public async Task<CreationResult> CreateAsync(AiDifficulty difficulty = AiDifficulty.Normal)
     {
-        var response = await http.PostAsync("/games", null);
+        var response = await http.PostAsync($"/games?difficulty={Uri.EscapeDataString(difficulty.ToString())}", null);
         if (!response.IsSuccessStatusCode)
             return new CreationResult(null, (await ReadProblem(response)).Refusal);
 
@@ -26,6 +26,9 @@ public sealed class GameApiClient(HttpClient http)
 
     public Task<IReadOnlyList<GameSummaryDto>> ListAsync() =>
         http.GetFromJsonAsync<IReadOnlyList<GameSummaryDto>>("/games", Json)!;
+
+    public async Task<bool> DeleteAsync(Guid id) =>
+        (await http.DeleteAsync($"/games/{id}")).IsSuccessStatusCode;
 
     public async Task<PreparationResult> PlaceShipAsync(Guid id, Coordinate origin, int length, Orientation orientation, int expectedVersion) =>
         await ReadState(await http.PostAsJsonAsync(
@@ -65,6 +68,9 @@ public sealed class GameApiClient(HttpClient http)
 
     public async Task<PreparationResult> PlaceFleetAtRandomAsync(Guid id, int expectedVersion) =>
         await ReadState(await http.PostAsJsonAsync($"/games/{id}/fleet/random", new VersionedRequest(expectedVersion), Json));
+
+    public async Task<PreparationResult> ResetFleetAsync(Guid id, int expectedVersion) =>
+        await ReadState(await http.PostAsJsonAsync($"/games/{id}/fleet/reset", new VersionedRequest(expectedVersion), Json));
 
     public async Task<TurnResult> StartAsync(Guid id) =>
         await ReadTurn(await http.PostAsync($"/games/{id}/start", null));
