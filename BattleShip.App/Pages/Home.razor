@@ -27,13 +27,21 @@
 
         try
         {
-            var game = await Api.CreateAsync();
-            Navigation.NavigateTo($"/partie/{game.Id}");
+            var result = await Api.CreateAsync();
+            if (result.Game is { } game)
+            {
+                Navigation.NavigateTo($"/partie/{game.Id}");
+                return;
+            }
+
+            error = result.Refusal;
         }
         catch (HttpRequestException exception)
         {
+            // Réponse d'erreur : lue par CreateAsync. Ici, c'est l'absence de réponse — API arrêtée.
             error = $"L'API n'a pas répondu : {exception.Message}";
-            creating = false;
         }
+
+        creating = false;
     }
 }

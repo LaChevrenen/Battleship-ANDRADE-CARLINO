@@ -204,9 +204,23 @@ else
 
     private async Task RefreshValidOrigins()
     {
-        validOrigins = state?.Phase == GamePhase.Setup && selectedLength is { } length
-            ? await Api.ValidOriginsAsync(Guid.Parse(Id), length, orientation)
-            : [];
+        if (state?.Phase != GamePhase.Setup || selectedLength is not { } length)
+        {
+            validOrigins = [];
+            return;
+        }
+
+        var result = await Api.ValidOriginsAsync(Guid.Parse(Id), length, orientation);
+        validOrigins = result.Origins;
+
+        // Sans origines, colorer l'aperçu en rouge serait un mensonge : on lâche la sélection,
+        // ce qui supprime l'aperçu, et on affiche ce que le serveur a répondu.
+        if (result.Refusal is { } refused)
+        {
+            selectedLength = null;
+            preview = [];
+            refusal = refused;
+        }
     }
 
     // Un clic sur ma grille pose le navire choisi, ou retire celui qui occupe déjà la case.
@@ -254,11 +268,8 @@ else
         busy = false;
     }
 
-    private void KeepSelectionValid()
-    {
-        if (state is null || selectedLength is not { } length || !state.Player.RemainingShipLengths.Contains(length))
-            selectedLength = state?.Player.RemainingShipLengths.Order().FirstOrDefault();
-    }
+    private void KeepSelectionValid() =>
+        selectedLength = ShipSelection.Keep(selectedLength, state?.Player.RemainingShipLengths ?? []);
 
     private async Task Start()
     {
@@ -315,8 +326,14 @@ else
 
     private async Task NewGame()
     {
-        var game = await Api.CreateAsync();
-        Navigation.NavigateTo($"/partie/{game.Id}");
+        var result = await Api.CreateAsync();
+        if (result.Game is { } game)
+        {
+            Navigation.NavigateTo($"/partie/{game.Id}");
+            return;
+        }
+
+        error = result.Refusal;
     }
 
     private static string Describe(TurnDto turn)

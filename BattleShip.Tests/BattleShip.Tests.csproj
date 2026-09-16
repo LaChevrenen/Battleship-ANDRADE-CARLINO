@@ -22,5 +22,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BattleShip.API\BattleShip.API.csproj" />
+    <!-- Les règles d'écran (quelle longueur reste choisie, comment un refus est lu) sont testables
+         sans rendu : bUnit reste écarté, c'est le visuel qui n'est pas couvert.
+         Alias obligatoire : l'API et l'App génèrent toutes deux les types de battleship.proto,
+         et sans lui BattleShip.Protocol.GameService devient ambigu (CS0433). -->
+    <ProjectReference Include="..\BattleShip.App\BattleShip.App.csproj" Aliases="app" />
   </ItemGroup>
 </Project>
