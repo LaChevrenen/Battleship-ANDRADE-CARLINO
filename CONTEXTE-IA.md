@@ -81,6 +81,10 @@
     moyenne 61,3 (min 27, max 100) ; tir aléatoire pur moyenne 95,5 (min 64, max 100).
   - Le seuil « moyenne chasse-cible < 75 » est protégé par le test
     `La_chasse_cible_coule_une_flotte_nettement_plus_vite_que_le_hasard` (commit `6e7baed`).
+  - L'historique des parties est exposé par `GET /games` et les résumés ne contiennent que
+    l'identifiant, la date de création, la phase et le gagnant éventuel.
+  - Une partie créée apparaît en phase `Setup` et peut être reprise par son URL ; test API
+    `Une_partie_creee_apparait_dans_l_historique_et_reste_reprenable`.
 - Arbitrages et évolution du périmètre :
 
   Le perimetre a ete revu au moment du cadrage : la grille et la flotte configurables, ainsi

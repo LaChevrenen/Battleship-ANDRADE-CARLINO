@@ -45,7 +45,8 @@ L'App appelle l'API à l'adresse indiquée dans `BattleShip.App/wwwroot/appsetti
 
 Pages disponibles :
 
-- `http://localhost:5274/` : créer une partie.
+- `http://localhost:5274/` : créer une partie, reprendre les parties en cours et consulter
+  l'historique des parties terminées.
 - `http://localhost:5274/partie/{identifiant}` : jouer, et reprendre la partie après un
   rechargement. L'état y est relu par gRPC-Web.
 
@@ -62,15 +63,17 @@ dotnet test BattleShip.slnx
 
 - Partie contre l'ordinateur sur une grille 10 × 10, flotte 5, 4, 3, 3 et 2 cases.
 - **Placement manuel de sa flotte** : port des navires restants dessinés à leur vraie longueur,
-  rotation par la touche `R` ou la molette, aperçu au survol coloré en vert ou en rouge
-  selon ce que le serveur autorise, clic sur un navire posé pour le retirer, et « Placement
-  aléatoire » autant de fois que voulu tant que la partie n'a pas commencé. La flotte de
-  l'ordinateur est placée par le serveur.
+  rotation du navire sélectionné à la molette sur la grille, aperçu au survol coloré en vert ou
+  en rouge selon ce que le serveur autorise, reprise d'un navire posé depuis n'importe laquelle
+  de ses cases, et « Placement aléatoire » autant de fois que voulu tant que la partie n'a pas
+  commencé. La flotte de l'ordinateur est placée par le serveur.
 - Toutes les règles sont appliquées côté serveur : placement, tours, rejeu tant qu'on touche,
   refus explicites, victoire.
 - Ordinateur « chasse-cible » : il tire au hasard, puis vise les cases voisines jusqu'à couler.
 - Les positions des navires adverses non coulés ne sortent jamais du serveur.
 - Reprise d'une partie par son URL `/partie/{identifiant}`, l'état étant relu en gRPC-Web.
+- Historique en mémoire des parties créées, avec distinction entre parties en cours et parties
+  terminées depuis l'accueil ; le bouton « Reprendre » ouvre leur URL.
 - Requêtes HTTP d'exemple dans `api.http`.
 
 ## Arbitrages
@@ -88,10 +91,9 @@ dotnet test BattleShip.slnx
   procédure `docs/VERIFICATION-MANUELLE.md`.
 - Les parties vivent en mémoire et n'expirent pas : un redémarrage du serveur les perd toutes, et
   la page affiche alors « Cette partie n'existe plus sur le serveur ».
-- **La rotation d'un navire n'est accessible qu'au clavier ou à la molette.** Le bouton
-  « Orientation » a été retiré au profit de la touche `R` et de la molette, et l'orientation
-  courante se lit dans le port. Sans clavier ni molette — sur un écran tactile, par exemple — il
-  n'existe plus aucun moyen de placer un navire verticalement.
+- La rotation d'un navire se fait à la molette sur la grille après sélection du navire dans le
+  port ou sur le plateau. L'historique et les parties en cours sont conservés en mémoire : un
+  redémarrage du serveur les perd.
 - `BattleShip.Tests` référence `BattleShip.App` avec `Aliases="app"`, et les tests d'écran
   commencent par `extern alias app;`. Sans cet alias, les types générés depuis `battleship.proto`
   existeraient deux fois — l'API les génère en `Both`, l'App en `Client` — et tout le projet de

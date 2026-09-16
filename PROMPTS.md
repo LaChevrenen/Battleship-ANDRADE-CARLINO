@@ -474,6 +474,33 @@
     ordre des contrôles), `42f68f2` (`api.http`), `6ad6134` (masquage sur le JSON brut).
   - Limites :
 
+## 2026-09-16 — Historique et reprise des parties
+
+- Outil / modèle si connu : GitHub Copilot dans VS Code ; exploration, implémentation et
+  vérification ciblée.
+- Contexte : l'accueil créait une partie mais ne listait pas les parties existantes. Le stockage
+  utilisait déjà un `ConcurrentDictionary<Guid, Entry>` en mémoire.
+- Prompt réellement utilisé : demande d'ajouter un historique de parties et la possibilité de
+  reprendre les parties en cours, puis « fais au mieux » après présentation des options mémoire,
+  fichier JSON et SQLite.
+- Réponse et hypothèses résumées : l'option mémoire a été retenue pour rester cohérente avec
+  l'architecture actuelle et ne pas ajouter de dépendance ; une partie `Setup` ou `InProgress`
+  est reprenable par `/partie/{identifiant}`.
+- Décision et justification :
+- Scénario ou commande de vérification :
+  - `dotnet build BattleShip.slnx`.
+  - `dotnet test BattleShip.Tests/BattleShip.Tests.csproj --no-restore --filter "FullyQualifiedName~Une_partie_creee_apparait_dans_l_historique" -v minimal`.
+- Résultat attendu, puis résultat observé :
+  - Attendu : l'application compile et une partie créée apparaît dans `GET /games` en phase
+    `Setup`.
+  - Observé : build réussi ; test ciblé réussi `1/1`.
+- Erreur que ce contrôle pourrait détecter : une partie créée absente de la liste ou un résumé
+  exposant un mauvais état de reprise.
+- Preuves reproductibles et limites :
+  - Endpoint ajouté : `GET /games`.
+  - DTO ajouté : `GameSummaryDto`.
+  - Limite : les résumés et les états sont perdus au redémarrage de l'API.
+
 
 ## 2026-09-16 — Phase gRPC-Web : contrat, service, CORS et client Blazor (S8)
 

@@ -75,3 +75,31 @@ Cette mutation a été faite parce qu'elle avait été signalée comme manquante
 **Preuves et limites**
 Commit d3dd499. Ces deux tests ne couvrent que les refus qui passent par Board. Les refus gérés par Game (partie non démarrée, mauvais tour, partie finie) arrivent avant tout appel à Board et n'ont pas été testés de cette façon. Un tir refusé parce que la case est déjà tirée ne peut pas laisser de trace, puisque la case est déjà dans le journal.
 Ce que ça nous a appris : des tests verts ne prouvent que ce qu'on a cherché à casser.
+
+
+## Revue 4 — liste et reprise des parties
+
+**Proposition examinée**
+Ajouter un résumé public par partie et l'afficher sur l'accueil, sans exposer les grilles.
+
+**Hypothèse**
+Un résumé limité à l'identifiant, la date, la phase et le gagnant permet de reprendre une partie
+en cours sans divulguer la position des navires adverses.
+
+**Expérience**
+Création d'une partie par HTTP, lecture de `GET /games`, désérialisation en `GameSummaryDto`,
+puis vérification de la phase `Setup` et de l'absence de gagnant.
+
+**Résultat attendu avant exécution**
+La partie créée devait être présente dans la liste avec la phase `Setup` et un gagnant nul.
+
+**Résultat observé**
+Le build a réussi et le test
+`Une_partie_creee_apparait_dans_l_historique_et_reste_reprenable` a réussi : `1` test, `0` échec.
+
+**Décision et justification**
+
+**Preuves et limites**
+La commande exécutée est :
+`dotnet test BattleShip.Tests/BattleShip.Tests.csproj --no-restore --filter "FullyQualifiedName~Une_partie_creee_apparait_dans_l_historique" -v minimal`.
+L'implémentation est en mémoire ; un redémarrage de l'API efface l'historique.
