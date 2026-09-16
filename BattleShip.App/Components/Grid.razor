@@ -4,7 +4,7 @@
    à quelle grille il correspond. C'est la page qui décide ce qu'elle lui passe, y compris si
    l'aperçu est valide — cette validité vient du serveur. *@
 
-<div class="grille @RootCssClass" @onmouseleave="@(() => OnLeave.InvokeAsync())" @onwheel="@((wheel) => OnWheel.InvokeAsync(wheel))" @onwheel:preventDefault @onselectstart:preventDefault @ondragstart:preventDefault>
+<div class="grille @RootCssClass" @onmouseleave="@(() => OnLeave.InvokeAsync())" @onselectstart:preventDefault @ondragstart:preventDefault>
     <div class="grille-header">
         <h2>@Title</h2>
     </div>
@@ -30,6 +30,8 @@
                         <td class="case @CssClass(cell) @HullClass(cell) @PreviewClass(cell) @AnimationClass(cell) @(OnCellClick.HasDelegate ? "cliquable" : null)"
                             @onclick="@(() => OnCellClick.InvokeAsync(cell))"
                             @onmouseenter="@(() => OnCellHover.InvokeAsync(cell))"
+                            @onwheel="@(() => OnWheel.InvokeAsync(cell))"
+                            @onwheel:preventDefault
                             @onselectstart:preventDefault
                             @ondragstart:preventDefault></td>
                     }
@@ -60,7 +62,7 @@
     // Le composant signale la case cliquée ou survolée ; il ne décide jamais si l'action est permise.
     [Parameter] public EventCallback<Coordinate> OnCellClick { get; set; }
     [Parameter] public EventCallback<Coordinate> OnCellHover { get; set; }
-    [Parameter] public EventCallback<WheelEventArgs> OnWheel { get; set; }
+    [Parameter] public EventCallback<Coordinate> OnWheel { get; set; }
 
     // Souris sortie de la grille : sans ça, le dernier aperçu resterait affiché.
     [Parameter] public EventCallback OnLeave { get; set; }

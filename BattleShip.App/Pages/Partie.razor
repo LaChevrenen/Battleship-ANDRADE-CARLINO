@@ -219,7 +219,6 @@ else
     private int? selectedLength;
     private int? selectedPortIndex;
     private IReadOnlyList<Coordinate>? selectedPlacedShip;
-    private Coordinate? selectedRotationCell;
     private Orientation orientation = Orientation.Horizontal;
     private IReadOnlyCollection<Coordinate> preview = [];
     private bool previewValid;
@@ -291,29 +290,29 @@ else
         selectedLength = length;
         selectedPortIndex = index;
         selectedPlacedShip = null;
-        selectedRotationCell = null;
         preview = [];
         await RefreshValidOrigins();
     }
 
-    private async Task RotateSelectedShip(WheelEventArgs wheel)
+    private async Task RotateSelectedShip(Coordinate cell)
     {
         if (state?.Phase != GamePhase.Setup)
             return;
 
-        var decision = ShipRotation.Resolve(selectedLength, selectedPlacedShip);
-        if (decision.RotatePlacedShip is { } cell)
+        if (selectedPlacedShip is { } selectedShip)
         {
-            var rotationCell = selectedRotationCell ?? cell;
-            await Prepare(version => Api.RotateShipAsync(Guid.Parse(Id), rotationCell, version));
-            selectedPlacedShip = state?.Player.Ships.FirstOrDefault(ship => ship.Contains(rotationCell));
+            if (!selectedShip.Contains(cell))
+                return;
+
+            await Prepare(version => Api.RotateShipAsync(Guid.Parse(Id), cell, version));
+            selectedPlacedShip = state?.Player.Ships.FirstOrDefault(ship => ship.Contains(cell));
             preview = selectedPlacedShip is null ? [] : [.. selectedPlacedShip];
             previewValid = selectedPlacedShip is not null;
             await InvokeAsync(StateHasChanged);
             return;
         }
 
-        if (decision.RotatePortSelection)
+        if (selectedLength is not null)
             await ToggleOrientation();
     }
 
@@ -414,7 +413,6 @@ else
             var targetOrientation = ResolveOrientation(selectedShip);
             selectedLength = null;
             selectedPlacedShip = null;
-            selectedRotationCell = null;
             preview = [];
             await Prepare(version => Api.MoveShipAsync(Guid.Parse(Id), source, origin, targetOrientation, version));
             return;
@@ -429,7 +427,6 @@ else
             selectedLength = null;
             selectedPortIndex = null;
             selectedPlacedShip = ship;
-            selectedRotationCell = origin;
             preview = [];
             return;
         }
