@@ -19,6 +19,7 @@ public static class GameEndpoints
         games.MapPost("/{id:guid}/ships", PlaceShip);
         // POST et non DELETE : le corps porte la case visée et la version attendue.
         games.MapPost("/{id:guid}/ships/remove", RemoveShip);
+        games.MapPost("/{id:guid}/ships/rotate", RotateShip);
         games.MapPost("/{id:guid}/fleet/random", PlaceFleetAtRandom);
         games.MapPost("/{id:guid}/start", Start);
         games.MapPost("/{id:guid}/shots", Fire);
@@ -79,6 +80,27 @@ public static class GameEndpoints
         if (!store.TryExecute(
                 id,
                 stored => stored.TryRemoveShipAt(cell, request.ExpectedVersion!.Value, out var rejection)
+                    ? rejection is { } reason
+                        ? TypedResults.Conflict(Rejection(reason.ToString(), Message(reason)))
+                        : Ok(GameDtoMapper.ToStateDto(stored))
+                    : TypedResults.Conflict(StaleVersion()),
+                out var result))
+            return TypedResults.NotFound();
+
+        return result;
+    }
+
+    private static async Task<Results<Ok<GameStateDto>, ValidationProblem, NotFound, Conflict<ProblemDetails>>> RotateShip(
+        Guid id, RotateShipRequest request, IValidator<RotateShipRequest> validator, GameStore store)
+    {
+        var validation = await validator.ValidateAsync(request);
+        if (!validation.IsValid)
+            return TypedResults.ValidationProblem(validation.ToDictionary());
+
+        var cell = new Coordinate(request.Column!.Value, request.Row!.Value);
+        if (!store.TryExecute(
+                id,
+                stored => stored.TryRotateShipAt(cell, request.ExpectedVersion!.Value, out var rejection)
                     ? rejection is { } reason
                         ? TypedResults.Conflict(Rejection(reason.ToString(), Message(reason)))
                         : Ok(GameDtoMapper.ToStateDto(stored))

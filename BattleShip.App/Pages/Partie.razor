@@ -43,7 +43,7 @@ else
             <div class="preparation">
                 @* L'orientation courante se lit dans le port, qui dessine les navires restants
                    dans cette orientation : pas de libellé à tenir à jour en double. *@
-                <span>Touche <kbd>R</kbd> ou molette pour pivoter le navire choisi.</span>
+                <span>Touche <kbd>R</kbd> ou molette : pivote le navire survolé, sinon le prochain à poser.</span>
                 <button @onclick="PlaceFleetAtRandom" disabled="@busy">Placement aléatoire</button>
                 <span>Clique un navire posé pour le retirer.</span>
                 <button @onclick="Start" disabled="@(busy || state.Player.RemainingShipLengths.Count > 0)">Commencer</button>
@@ -89,7 +89,7 @@ else
               PreviewValid="previewValid"
               OnCellClick="PlaceShip"
               OnCellHover="ShowPreview"
-              OnLeave="@(() => preview = [])" />
+              OnLeave="ClearHover" />
 
         <Grid Title="Grille adverse"
               Width="state.Opponent.Width"
@@ -114,6 +114,9 @@ else
     private Orientation orientation = Orientation.Horizontal;
     private IReadOnlyCollection<Coordinate> preview = [];
     private bool previewValid;
+
+    // Case de ma grille sous la souris : c'est elle qui décide de ce que fait R ou la molette.
+    private Coordinate? hoveredCell;
 
     // Cases où le navire choisi tient, telles que le serveur les a calculées.
     private IReadOnlyList<Coordinate> validOrigins = [];
@@ -172,10 +175,22 @@ else
     private async Task OnKeyDown(KeyboardEventArgs key)
     {
         if (key.Key is "r" or "R")
-            await ToggleOrientation();
+            await Pivot();
     }
 
-    private Task OnWheel(WheelEventArgs wheel) => ToggleOrientation();
+    private Task OnWheel(WheelEventArgs wheel) => Pivot();
+
+    // Le geste dépend de ce qui est sous la souris : un navire posé pivote lui-même, sinon c'est
+    // l'orientation du prochain navire à poser qui bascule. Le serveur reste seul juge du résultat.
+    private Task Pivot()
+    {
+        if (state?.Phase != GamePhase.Setup)
+            return Task.CompletedTask;
+
+        return hoveredCell is { } cell && OwnShipCells.Contains(cell)
+            ? Prepare(version => Api.RotateShipAsync(Guid.Parse(Id), cell, version))
+            : ToggleOrientation();
+    }
 
     private async Task Select(int length)
     {
@@ -198,6 +213,10 @@ else
     // fait qu'une appartenance à la liste des origines valides qu'il a reçue.
     private void ShowPreview(Coordinate origin)
     {
+        // Retenue avant tout le reste : même sans navire choisi, il faut savoir ce qui est survolé
+        // pour pouvoir faire pivoter un navire déjà posé.
+        hoveredCell = origin;
+
         if (state?.Phase != GamePhase.Setup || selectedLength is not { } length)
         {
             preview = [];
@@ -208,6 +227,12 @@ else
             ? origin with { Column = origin.Column + offset }
             : origin with { Row = origin.Row + offset })];
         previewValid = validOrigins.Contains(origin);
+    }
+
+    private void ClearHover()
+    {
+        hoveredCell = null;
+        preview = [];
     }
 
     private async Task RefreshValidOrigins()

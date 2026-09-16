@@ -29,6 +29,7 @@ builder.Services.AddSingleton<IValidator<FireRequest>, FireRequestValidator>();
 builder.Services.AddSingleton<IValidator<PlaceShipRequest>, PlaceShipRequestValidator>();
 builder.Services.AddSingleton<IValidator<VersionedRequest>, VersionedRequestValidator>();
 builder.Services.AddSingleton<IValidator<RemoveShipRequest>, RemoveShipRequestValidator>();
+builder.Services.AddSingleton<IValidator<RotateShipRequest>, RotateShipRequestValidator>();
 builder.Services.AddSingleton<IValidator<PlacementOriginsRequest>, PlacementOriginsRequestValidator>();
 builder.Services.AddGrpc();
 builder.Services.AddSingleton<IValidator<GetGameRequest>, GetGameRequestValidator>();

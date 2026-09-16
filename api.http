@@ -40,12 +40,33 @@ Content-Type: application/json
 ### Le client s'en sert pour colorer l'aperçu ; il ne juge jamais lui-même la validité.
 GET {{api}}/games/{{create.response.body.$.id}}/placements?length=4&orientation=Horizontal
 
+### Faire pivoter un navire par une de ses cases : 200, il passe à la verticale
+### Ancrage sur l'origine : la case en haut à gauche ne bouge pas, A1 reste occupée.
+# @name rotate
+POST {{api}}/games/{{create.response.body.$.id}}/ships/rotate
+Content-Type: application/json
+
+{ "column": 2, "row": 0, "expectedVersion": {{place.response.body.$.version}} }
+
+### Le faire pivoter une seconde fois le remet à l'horizontale : 200
+# @name rotateback
+POST {{api}}/games/{{create.response.body.$.id}}/ships/rotate
+Content-Type: application/json
+
+{ "column": 0, "row": 2, "expectedVersion": {{rotate.response.body.$.version}} }
+
+### Faire pivoter une case sans navire : 409 NoShipHere, la flotte ne change pas
+POST {{api}}/games/{{create.response.body.$.id}}/ships/rotate
+Content-Type: application/json
+
+{ "column": 9, "row": 9, "expectedVersion": {{rotateback.response.body.$.version}} }
+
 ### Retirer un navire en cliquant sur une de ses cases : 200, la longueur revient dans les restantes
 # @name undo
 POST {{api}}/games/{{create.response.body.$.id}}/ships/remove
 Content-Type: application/json
 
-{ "column": 2, "row": 0, "expectedVersion": {{place.response.body.$.version}} }
+{ "column": 2, "row": 0, "expectedVersion": {{rotateback.response.body.$.version}} }
 
 ### Tirer toute la flotte au hasard : 200, plus rien à poser
 # @name fleet

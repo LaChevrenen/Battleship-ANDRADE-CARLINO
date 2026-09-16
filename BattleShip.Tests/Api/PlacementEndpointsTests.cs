@@ -36,6 +36,9 @@ public sealed class PlacementEndpointsTests : IClassFixture<WebApplicationFactor
     private Task<HttpResponseMessage> RemoveShip(Guid id, int column, int row, int version) =>
         client.PostAsJsonAsync($"/games/{id}/ships/remove", new { column, row, expectedVersion = version }, Json);
 
+    private Task<HttpResponseMessage> RotateShip(Guid id, int column, int row, int version) =>
+        client.PostAsJsonAsync($"/games/{id}/ships/rotate", new { column, row, expectedVersion = version }, Json);
+
     private async Task<PlacementOriginsDto> ValidOrigins(Guid id, int length, Orientation orientation) =>
         (await client.GetFromJsonAsync<PlacementOriginsDto>($"/games/{id}/placements?length={length}&orientation={orientation}", Json))!;
 
@@ -147,6 +150,79 @@ public sealed class PlacementEndpointsTests : IClassFixture<WebApplicationFactor
         var empty = await RemoveShip(created.Id, 2, 0, undone.Version);
         Assert.Equal(HttpStatusCode.Conflict, empty.StatusCode);
         Assert.Equal("NoShipHere", await RejectionOf(empty));
+    }
+
+    [Fact]
+    public async Task Faire_pivoter_un_navire_le_redresse_autour_de_son_origine()
+    {
+        var created = await CreateGame();
+        var afterFirst = await State(await PlaceShip(created.Id, 0, 0, 5, Orientation.Horizontal, created.Version));
+
+        // Une case du milieu : le joueur survole n'importe où sur le navire.
+        var rotated = await State(await RotateShip(created.Id, 2, 0, afterFirst.Version));
+
+        Assert.Equal<Coordinate>(
+            [new(0, 0), new(0, 1), new(0, 2), new(0, 3), new(0, 4)],
+            Assert.Single(rotated.Player.Ships).OrderBy(cell => cell.Row).ThenBy(cell => cell.Column));
+        Assert.Equal(afterFirst.Version + 1, rotated.Version);
+        Assert.Equal<int>([2, 3, 3, 4], rotated.Player.RemainingShipLengths.Order());
+    }
+
+    [Fact]
+    public async Task Faire_pivoter_une_case_sans_navire_est_refuse()
+    {
+        var created = await CreateGame();
+        var afterFirst = await State(await PlaceShip(created.Id, 0, 0, 5, Orientation.Horizontal, created.Version));
+
+        var response = await RotateShip(created.Id, 9, 9, afterFirst.Version);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("NoShipHere", await RejectionOf(response));
+    }
+
+    [Fact]
+    public async Task Un_navire_qui_ne_tient_pas_apres_rotation_est_refuse_sans_rien_changer()
+    {
+        var created = await CreateGame();
+        // Posé sur l'avant-dernière ligne : à la verticale, il sortirait de la grille.
+        var afterFirst = await State(await PlaceShip(created.Id, 0, 8, 5, Orientation.Horizontal, created.Version));
+
+        var response = await RotateShip(created.Id, 0, 8, afterFirst.Version);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("OutOfBounds", await RejectionOf(response));
+
+        // La flotte n'a pas été démontée entre-temps : même version, même navire, mêmes cases.
+        var state = await GetState(created.Id);
+        Assert.Equal(afterFirst.Version, state.Version);
+        Assert.Equal(5, Assert.Single(state.Player.Ships).Count);
+        Assert.Equal<int>([2, 3, 3, 4], state.Player.RemainingShipLengths.Order());
+    }
+
+    [Fact]
+    public async Task Pivoter_depuis_une_version_depassee_est_refuse_sans_rien_changer()
+    {
+        var created = await CreateGame();
+        var afterFirst = await State(await PlaceShip(created.Id, 0, 0, 5, Orientation.Horizontal, created.Version));
+
+        var response = await RotateShip(created.Id, 2, 0, created.Version);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("StaleVersion", await RejectionOf(response));
+        var state = await GetState(created.Id);
+        Assert.Equal(afterFirst.Version, state.Version);
+        Assert.Contains(new Coordinate(4, 0), Assert.Single(state.Player.Ships));
+    }
+
+    [Fact]
+    public async Task Une_demande_de_rotation_sans_case_renvoie_400()
+    {
+        var created = await CreateGame();
+
+        var response = await client.PostAsJsonAsync(
+            $"/games/{created.Id}/ships/rotate", new { expectedVersion = created.Version }, Json);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]

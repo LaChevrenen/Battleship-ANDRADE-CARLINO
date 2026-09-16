@@ -30,6 +30,12 @@ public sealed class GameApiClient(HttpClient http)
             new PlaceShipRequest(origin.Column, origin.Row, length, orientation, expectedVersion),
             Json));
 
+    public async Task<PreparationResult> RotateShipAsync(Guid id, Coordinate cell, int expectedVersion) =>
+        await ReadState(await http.PostAsJsonAsync(
+            $"/games/{id}/ships/rotate",
+            new RotateShipRequest(cell.Column, cell.Row, expectedVersion),
+            Json));
+
     public async Task<PreparationResult> RemoveShipAsync(Guid id, Coordinate cell, int expectedVersion) =>
         await ReadState(await http.PostAsJsonAsync(
             $"/games/{id}/ships/remove",
