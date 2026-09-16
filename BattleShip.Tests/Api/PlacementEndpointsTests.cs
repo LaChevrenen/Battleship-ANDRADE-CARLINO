@@ -179,7 +179,8 @@ public sealed class PlacementEndpointsTests : IClassFixture<WebApplicationFactor
         var random = await PlaceAtRandom(created.Id, started.Version);
 
         Assert.Equal("NotInSetup", await RejectionOf(place));
-        Assert.Equal("NoShipToRemove", await RejectionOf(undo));
+        // « Défaire » après le démarrage doit dire que la préparation est finie, pas qu'il n'y a rien à retirer.
+        Assert.Equal("NotInSetup", await RejectionOf(undo));
         Assert.Equal("NotInSetup", await RejectionOf(random));
         var state = await client.GetFromJsonAsync<GameStateDto>($"/games/{created.Id}", Json);
         Assert.Equal(placed.Player.Ships.Count, state!.Player.Ships.Count);

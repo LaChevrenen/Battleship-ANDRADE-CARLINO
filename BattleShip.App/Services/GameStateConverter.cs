@@ -18,7 +18,8 @@ public static class GameStateConverter
             state.Player.Height,
             [.. state.Player.Ships.Select(ToCells)],
             [.. state.Player.Misses.Select(ToDto)],
-            [.. state.Player.Hits.Select(ToDto)]),
+            [.. state.Player.Hits.Select(ToDto)],
+            [.. state.Player.RemainingShipLengths]),
         new OpponentBoardDto(
             state.Opponent.Width,
             state.Opponent.Height,

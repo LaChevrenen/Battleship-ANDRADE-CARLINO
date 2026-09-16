@@ -24,8 +24,9 @@
                     @for (var column = 0; column < Width; column++)
                     {
                         var cell = new Coordinate(column, currentRow);
-                        <td class="case @CssClass(cell) @(OnCellClick.HasDelegate ? "cliquable" : null)"
-                            @onclick="@(() => OnCellClick.InvokeAsync(cell))"></td>
+                        <td class="case @CssClass(cell) @(OnCellClick.HasDelegate ? "cliquable" : null) @(Preview.Contains(cell) ? "apercu" : null)"
+                            @onclick="@(() => OnCellClick.InvokeAsync(cell))"
+                            @onmouseover="@(() => OnCellHover.InvokeAsync(cell))"></td>
                     }
                 </tr>
             }
@@ -42,8 +43,12 @@
     [Parameter] public IReadOnlyCollection<Coordinate> Hits { get; set; } = [];
     [Parameter] public IReadOnlyCollection<Coordinate> SunkCells { get; set; } = [];
 
-    // Le composant signale la case cliquée ; il ne décide jamais si le tir est permis.
+    // Cases que la page veut mettre en évidence, par exemple l'aperçu d'un navire avant de le poser.
+    [Parameter] public IReadOnlyCollection<Coordinate> Preview { get; set; } = [];
+
+    // Le composant signale la case cliquée ou survolée ; il ne décide jamais si l'action est permise.
     [Parameter] public EventCallback<Coordinate> OnCellClick { get; set; }
+    [Parameter] public EventCallback<Coordinate> OnCellHover { get; set; }
 
     // Ordre d'affichage seulement : une case coulée reste touchée, une case touchée porte un navire.
     private string CssClass(Coordinate cell) =>

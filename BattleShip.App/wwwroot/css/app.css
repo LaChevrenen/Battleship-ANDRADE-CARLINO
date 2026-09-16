@@ -124,3 +124,8 @@ code {
 .grille td.touche { background: #e06c5a; }
 .grille td.coule { background: #7a2f22; }
 .grille td.cliquable { cursor: pointer; }
+
+/* Préparation de la flotte */
+.preparation { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.75rem; }
+.preparation button.choisi { font-weight: bold; outline: 2px solid #2d6cdf; }
+.grille td.apercu { outline: 2px solid #2d6cdf; outline-offset: -2px; }

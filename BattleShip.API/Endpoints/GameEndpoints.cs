@@ -55,19 +55,19 @@ public static class GameEndpoints
     private static async Task<Results<Ok<GameStateDto>, ValidationProblem, NotFound, Conflict<ProblemDetails>>> RemoveLastShip(
         Guid id, VersionedRequest request, IValidator<VersionedRequest> validator, GameStore store) =>
         await PreparationCommand(id, request, validator, store, (stored, version) =>
-            stored.TryRemoveLastShip(version, out var removed)
-                ? removed
-                    ? null
-                    : Rejection("NoShipToRemove", "Aucun navire à retirer.")
+            stored.TryRemoveLastShip(version, out var rejection)
+                ? rejection is { } reason
+                    ? Rejection(reason.ToString(), Message(reason))
+                    : null
                 : StaleVersion());
 
     private static async Task<Results<Ok<GameStateDto>, ValidationProblem, NotFound, Conflict<ProblemDetails>>> PlaceFleetAtRandom(
         Guid id, VersionedRequest request, IValidator<VersionedRequest> validator, GameStore store) =>
         await PreparationCommand(id, request, validator, store, (stored, version) =>
-            stored.TryPlaceFleetAtRandom(version, out var placed)
-                ? placed
-                    ? null
-                    : Rejection("NotInSetup", Message(PlacementRejection.NotInSetup))
+            stored.TryPlaceFleetAtRandom(version, out var rejection)
+                ? rejection is { } reason
+                    ? Rejection(reason.ToString(), Message(reason))
+                    : null
                 : StaleVersion());
 
     // Facteur commun des deux commandes sans autre donnée que la version : valider, trouver la partie, agir sous verrou.
@@ -179,6 +179,7 @@ public static class GameEndpoints
         PlacementRejection.Overlap => "Ce navire en chevauche un autre.",
         PlacementRejection.AdjacentShip => "Ce navire en touche un autre par un côté.",
         PlacementRejection.LengthNotAvailable => "Tous les navires de cette longueur sont déjà posés.",
+        PlacementRejection.NoShipToRemove => "Aucun navire à retirer.",
         PlacementRejection.NotInSetup => "La partie a déjà commencé : la flotte ne peut plus changer.",
         _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, null),
     };

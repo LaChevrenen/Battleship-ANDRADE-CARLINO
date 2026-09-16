@@ -40,7 +40,22 @@ else
 
         @if (state.Phase == GamePhase.Setup)
         {
-            <button @onclick="Start" disabled="@busy">Commencer</button>
+            <div class="preparation">
+                <span>Navires à poser :</span>
+                @foreach (var length in state.Player.RemainingShipLengths.Distinct().Order())
+                {
+                    var choix = length;
+                    <button class="@(choix == selectedLength ? "choisi" : null)" @onclick="() => Select(choix)">
+                        @choix cases (× @state.Player.RemainingShipLengths.Count(remaining => remaining == choix))
+                    </button>
+                }
+                <button @onclick="ToggleOrientation">
+                    Orientation : @(orientation == Orientation.Horizontal ? "horizontale" : "verticale")
+                </button>
+                <button @onclick="PlaceFleetAtRandom" disabled="@busy">Placement aléatoire</button>
+                <button @onclick="UndoShip" disabled="@busy">Défaire</button>
+                <button @onclick="Start" disabled="@(busy || state.Player.RemainingShipLengths.Count > 0)">Commencer</button>
+            </div>
         }
     }
 
@@ -60,7 +75,10 @@ else
               Height="state.Player.Height"
               Ships="OwnShipCells"
               Misses="state.Player.Misses"
-              Hits="state.Player.Hits" />
+              Hits="state.Player.Hits"
+              Preview="preview"
+              OnCellClick="PlaceShip"
+              OnCellHover="ShowPreview" />
 
         <Grid Title="Grille adverse"
               Width="state.Opponent.Width"
@@ -80,6 +98,9 @@ else
     private string? refusal;
     private string? error;
     private bool busy;
+    private int? selectedLength;
+    private Orientation orientation = Orientation.Horizontal;
+    private IReadOnlyCollection<Coordinate> preview = [];
 
     private IReadOnlyCollection<Coordinate> OwnShipCells =>
         state is null ? [] : [.. state.Player.Ships.SelectMany(ship => ship)];
@@ -104,6 +125,8 @@ else
         {
             var response = await GameClient.GetGameAsync(new Proto.GetGameRequest { GameId = Id });
             state = GameStateConverter.ToDto(response);
+            preview = [];
+            KeepSelectionValid();
         }
         catch (RpcException failure) when (failure.StatusCode == StatusCode.NotFound)
         {
@@ -117,6 +140,69 @@ else
         {
             error = $"Lecture de la partie en échec ({failure.StatusCode}) : {failure.Status.Detail}";
         }
+    }
+
+    private void Select(int length)
+    {
+        selectedLength = length;
+        preview = [];
+    }
+
+    private void ToggleOrientation()
+    {
+        orientation = orientation == Orientation.Horizontal ? Orientation.Vertical : Orientation.Horizontal;
+        preview = [];
+    }
+
+    // Forme dessinée côté client pour l'aperçu seulement : la validité reste jugée par le serveur.
+    private void ShowPreview(Coordinate origin) =>
+        preview = selectedLength is { } length
+            ? [.. Enumerable.Range(0, length).Select(offset => orientation == Orientation.Horizontal
+                ? origin with { Column = origin.Column + offset }
+                : origin with { Row = origin.Row + offset })]
+            : [];
+
+    private async Task PlaceShip(Coordinate origin)
+    {
+        if (busy || state is null || state.Phase != GamePhase.Setup || selectedLength is not { } length)
+            return;
+
+        await Prepare(version => Api.PlaceShipAsync(Guid.Parse(Id), origin, length, orientation, version));
+    }
+
+    private Task UndoShip() => Prepare(version => Api.UndoShipAsync(Guid.Parse(Id), version));
+
+    private Task PlaceFleetAtRandom() => Prepare(version => Api.PlaceFleetAtRandomAsync(Guid.Parse(Id), version));
+
+    private async Task Prepare(Func<int, Task<PreparationResult>> command)
+    {
+        if (busy || state is null)
+            return;
+
+        busy = true;
+        refusal = null;
+
+        var result = await command(state.Version);
+        if (result.State is { } updated)
+        {
+            state = updated;
+            preview = [];
+            KeepSelectionValid();
+        }
+        else
+        {
+            refusal = result.Refusal;
+            if (result.MustReload)
+                await LoadState();
+        }
+
+        busy = false;
+    }
+
+    private void KeepSelectionValid()
+    {
+        if (state is null || selectedLength is not { } length || !state.Player.RemainingShipLengths.Contains(length))
+            selectedLength = state?.Player.RemainingShipLengths.Order().FirstOrDefault();
     }
 
     private async Task Start()

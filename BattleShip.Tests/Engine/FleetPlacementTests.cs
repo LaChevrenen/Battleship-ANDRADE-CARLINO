@@ -1,4 +1,4 @@
-using BattleShip.API.Engine;
+﻿using BattleShip.API.Engine;
 using BattleShip.Models;
 
 namespace BattleShip.Tests.Engine;
@@ -117,8 +117,8 @@ public sealed class FleetPlacementTests
         var playerBoard = game.PlayerBoard;
 
         Assert.Equal(PlacementRejection.NotInSetup, game.TryPlaceShip(new(5, 5), 1, Orientation.Horizontal));
-        Assert.False(game.TryRemoveLastShip());
-        Assert.False(game.TryPlaceFleetAtRandom());
+        Assert.Equal(PlacementRejection.NotInSetup, game.TryRemoveLastShip());
+        Assert.Equal(PlacementRejection.NotInSetup, game.TryPlaceFleetAtRandom());
 
         // La flotte a été figée au démarrage : aucune de ces opérations n'a d'objet à modifier.
         Assert.Same(playerBoard, game.PlayerBoard);

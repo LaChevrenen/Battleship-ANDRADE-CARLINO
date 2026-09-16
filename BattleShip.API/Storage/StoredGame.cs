@@ -40,27 +40,27 @@ public sealed class StoredGame(Guid id, Game game)
         return true;
     }
 
-    public bool TryRemoveLastShip(int expectedVersion, out bool removed)
+    public bool TryRemoveLastShip(int expectedVersion, out PlacementRejection? rejection)
     {
-        removed = false;
+        rejection = null;
         if (expectedVersion != Version)
             return false;
 
-        removed = Game.TryRemoveLastShip();
-        if (removed)
+        rejection = Game.TryRemoveLastShip();
+        if (rejection is null)
             Version++;
 
         return true;
     }
 
-    public bool TryPlaceFleetAtRandom(int expectedVersion, out bool placed)
+    public bool TryPlaceFleetAtRandom(int expectedVersion, out PlacementRejection? rejection)
     {
-        placed = false;
+        rejection = null;
         if (expectedVersion != Version)
             return false;
 
-        placed = Game.TryPlaceFleetAtRandom();
-        if (placed)
+        rejection = Game.TryPlaceFleetAtRandom();
+        if (rejection is null)
             Version++;
 
         return true;

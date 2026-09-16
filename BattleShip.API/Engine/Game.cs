@@ -37,22 +37,30 @@ public sealed class Game(FleetUnderConstruction playerFleet, Board computerBoard
         return rejection;
     }
 
-    public bool TryRemoveLastShip()
+    public PlacementRejection? TryRemoveLastShip()
     {
-        if (fleetUnderConstruction?.TryRemoveLast() is not true)
-            return false;
+        // Deux motifs distincts : après le démarrage, dire « aucun navire à retirer » serait faux.
+        if (fleetUnderConstruction is null)
+            return PlacementRejection.NotInSetup;
+
+        if (!fleetUnderConstruction.TryRemoveLast())
+            return PlacementRejection.NoShipToRemove;
 
         PlayerBoard = fleetUnderConstruction.ToBoard();
-        return true;
+        return null;
     }
 
-    public bool TryPlaceFleetAtRandom()
+    public PlacementRejection? TryPlaceFleetAtRandom()
     {
-        if (fleetUnderConstruction?.TryPlaceAtRandom(random) is not true)
-            return false;
+        if (fleetUnderConstruction is null)
+            return PlacementRejection.NotInSetup;
+
+        // La flotte par défaut tient toujours : un échec ici est un bug, pas une situation de jeu.
+        if (!fleetUnderConstruction.TryPlaceAtRandom(random))
+            throw new InvalidOperationException("La flotte n'a pas pu être placée au hasard.");
 
         PlayerBoard = fleetUnderConstruction.ToBoard();
-        return true;
+        return null;
     }
 
     public StartRejection? TryStart(Func<RevealedBoard, Coordinate> chooseComputerTarget, out IReadOnlyList<ComputerShot> computerShots)
