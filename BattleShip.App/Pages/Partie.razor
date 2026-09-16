@@ -32,72 +32,101 @@ else
     {
         <p>
             Phase : @state.Phase
-            @if (state.CurrentTurn is { } turn)
+            @if (state.CurrentTurn is not null)
             {
-                <text> — tour : @turn</text>
+                <text> — tour : @state.CurrentTurn</text>
             }
         </p>
 
         @if (state.Phase == GamePhase.Setup)
         {
-            <div class="preparation">
-                @* L'orientation courante se lit dans le port, qui dessine les navires restants
-                   dans cette orientation : pas de libellé à tenir à jour en double. *@
-                <span>Touche <kbd>R</kbd> ou molette : pivote le navire survolé, sinon le prochain à poser.</span>
-                <button @onclick="PlaceFleetAtRandom" disabled="@busy">Placement aléatoire</button>
-                <span>Clique un navire posé pour le retirer.</span>
-                <button @onclick="Start" disabled="@(busy || state.Player.RemainingShipLengths.Count > 0)">Commencer</button>
+            <div class="preparation-bar">
+                <div class="status-copy">
+                    <span>Sélectionne un navire du port ou un bateau déjà posé, puis utilise la molette sur ma grille pour le pivoter.</span>
+                </div>
+                <div class="action-row">
+                    <button class="primary" @onclick="PlaceFleetAtRandom" disabled="@busy">Placement aléatoire</button>
+                    <button class="ghost" @onclick="Start" disabled="@(busy || state.Player.RemainingShipLengths.Count > 0)">Commencer</button>
+                </div>
             </div>
         }
     }
 
     @if (message is not null)
     {
-        <p>@message</p>
+        <p class="notice">@message</p>
     }
 
     @if (refusal is not null)
     {
-        <p role="alert">Refusé : @refusal</p>
+        <p class="alert" role="alert">Refusé : @refusal</p>
     }
 
     @* Un refus vient du serveur, une absence de réponse veut dire qu'il n'a rien dit : deux
        messages distincts, parce que l'un se corrige en jouant autrement et l'autre non. *@
     @if (unreachable is not null)
     {
-        <p role="alert">@unreachable</p>
+        <p class="alert" role="alert">@unreachable</p>
     }
 
-    @* tabindex : sans focus, l'élément ne reçoit pas les touches. preventDefault évite que la molette fasse défiler la page. *@
-    <div class="grilles" tabindex="0" @ref="board" @onkeydown="OnKeyDown" @onwheel="OnWheel" @onwheel:preventDefault>
-        @if (state.Phase == GamePhase.Setup)
-        {
-            <Port RemainingLengths="state.Player.RemainingShipLengths"
-                  SelectedLength="selectedLength"
-                  Orientation="orientation"
-                  OnSelect="Select" />
-        }
+    <div class="game-shell">
+        <aside class="game-sidebar">
+            @if (state.Phase == GamePhase.Setup)
+            {
+                    <Port RemainingLengths="state.Player.RemainingShipLengths"
+                        SelectedIndex="selectedPortIndex"
+                      Orientation="orientation"
+                      OnSelect="Select" />
+            }
 
-        <Grid Title="Ma grille"
-              Width="state.Player.Width"
-              Height="state.Player.Height"
-              Ships="state.Player.Ships"
-              SunkShips="state.Player.SunkShips"
-              Misses="state.Player.Misses"
-              Hits="state.Player.Hits"
-              Preview="preview"
-              PreviewValid="previewValid"
-              OnCellClick="PlaceShip"
-              OnCellHover="ShowPreview"
-              OnLeave="ClearHover" />
+            <div class="hud-card">
+                <h3>État</h3>
+                <div class="hud-item">
+                    <span>Phase</span>
+                    <strong>@state.Phase</strong>
+                </div>
+                @if (state.CurrentTurn is not null)
+                {
+                    <div class="hud-item">
+                        <span>Tour</span>
+                        <strong>@state.CurrentTurn</strong>
+                    </div>
+                }
+            </div>
+        </aside>
 
-        <Grid Title="Grille adverse"
-              Width="state.Opponent.Width"
-              Height="state.Opponent.Height"
-              SunkShips="state.Opponent.SunkShips"
-              Misses="state.Opponent.Misses"
-              Hits="state.Opponent.Hits"
-              OnCellClick="Fire" />
+        <div class="boards-area @(state.Phase == GamePhase.Setup ? "setup-mode" : "battle-mode")">
+            @if (state.Phase != GamePhase.Setup)
+            {
+                <div class="board-panel board-panel-opponent">
+                    <Grid Title="Grille adverse"
+                          Width="state.Opponent.Width"
+                          Height="state.Opponent.Height"
+                          SunkShips="state.Opponent.SunkShips"
+                          Misses="state.Opponent.Misses"
+                          Hits="state.Opponent.Hits"
+                          RootCssClass="primary-grid"
+                          OnCellClick="Fire" />
+                </div>
+            }
+
+            <div class="board-panel board-panel-player">
+                <Grid Title="Ma grille"
+                      Width="state.Player.Width"
+                      Height="state.Player.Height"
+                      Ships="VisibleShips"
+                      SunkShips="state.Player.SunkShips"
+                      Misses="state.Player.Misses"
+                      Hits="state.Player.Hits"
+                      Preview="preview"
+                      PreviewValid="previewValid"
+                      OnCellClick="PlaceShip"
+                      OnCellHover="ShowPreview"
+                      OnLeave="ClearHover"
+                      OnWheel="RotateSelectedShip"
+                      RootCssClass="@(state.Phase == GamePhase.Setup ? "primary-grid" : "compact")" />
+            </div>
+        </div>
     </div>
 }
 
@@ -111,21 +140,22 @@ else
     private string? error;
     private bool busy;
     private int? selectedLength;
+    private int? selectedPortIndex;
+    private IReadOnlyList<Coordinate>? selectedPlacedShip;
     private Orientation orientation = Orientation.Horizontal;
     private IReadOnlyCollection<Coordinate> preview = [];
     private bool previewValid;
 
-    // Case de ma grille sous la souris : c'est elle qui décide de ce que fait R ou la molette.
-    private Coordinate? hoveredCell;
-
     // Cases où le navire choisi tient, telles que le serveur les a calculées.
     private IReadOnlyList<Coordinate> validOrigins = [];
 
-    private ElementReference board;
-    private bool focusPlaced;
-
     private IReadOnlyCollection<Coordinate> OwnShipCells =>
         state is null ? [] : [.. state.Player.Ships.SelectMany(ship => ship)];
+
+    private IReadOnlyList<IReadOnlyList<Coordinate>> VisibleShips =>
+        state is null || selectedPlacedShip is null
+            ? state?.Player.Ships ?? []
+            : [.. state.Player.Ships.Where(ship => !ship.SequenceEqual(selectedPlacedShip))];
 
     protected override Task OnParametersSetAsync()
     {
@@ -162,47 +192,35 @@ else
         }
     }
 
-    // Le focus est donné une fois, pour que R fonctionne sans que le joueur ait à cliquer d'abord.
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private async Task Select(int index)
     {
-        if (focusPlaced || state?.Phase != GamePhase.Setup)
+        if (state is null || index < 0 || index >= state.Player.RemainingShipLengths.Count)
             return;
 
-        focusPlaced = true;
-        await board.FocusAsync();
-    }
-
-    private async Task OnKeyDown(KeyboardEventArgs key)
-    {
-        if (key.Key is "r" or "R")
-            await Pivot();
-    }
-
-    private Task OnWheel(WheelEventArgs wheel) => Pivot();
-
-    // Priorité de contexte : si un navire du port est sélectionné, la rotation touche cet aperçu,
-    // pas un navire déjà posé. Les navires posés ne tournent que quand aucun navire du port
-    // n'est actif.
-    private Task Pivot()
-    {
-        if (state?.Phase != GamePhase.Setup)
-            return Task.CompletedTask;
-
-        var decision = ShipRotation.Resolve(selectedLength, hoveredCell, OwnShipCells);
-        if (decision.RotatePortSelection)
-            return ToggleOrientation();
-
-        if (decision.RotatePlacedShip is { } cell)
-            return Prepare(version => Api.RotateShipAsync(Guid.Parse(Id), cell, version));
-
-        return Task.CompletedTask;
-    }
-
-    private async Task Select(int length)
-    {
+        var length = state.Player.RemainingShipLengths[index];
         selectedLength = length;
+        selectedPortIndex = index;
+        selectedPlacedShip = null;
         preview = [];
         await RefreshValidOrigins();
+    }
+
+    private async Task RotateSelectedShip(WheelEventArgs wheel)
+    {
+        if (state?.Phase != GamePhase.Setup)
+            return;
+
+        var decision = ShipRotation.Resolve(selectedLength, selectedPlacedShip);
+        if (decision.RotatePlacedShip is { } cell)
+        {
+            var anchor = ShipAnchor(selectedPlacedShip!);
+            await Prepare(version => Api.RotateShipAsync(Guid.Parse(Id), cell, version));
+            selectedPlacedShip = state?.Player.Ships.FirstOrDefault(ship => ship.Contains(anchor));
+            return;
+        }
+
+        if (decision.RotatePortSelection)
+            await ToggleOrientation();
     }
 
     private async Task ToggleOrientation()
@@ -226,11 +244,20 @@ else
     // fait qu'une appartenance à la liste des origines valides qu'il a reçue.
     private void ShowPreview(Coordinate origin)
     {
-        // Retenue avant tout le reste : même sans navire choisi, il faut savoir ce qui est survolé
-        // pour pouvoir faire pivoter un navire déjà posé.
-        hoveredCell = origin;
+        if (state?.Phase != GamePhase.Setup)
+        {
+            preview = [];
+            return;
+        }
 
-        if (state?.Phase != GamePhase.Setup || selectedLength is not { } length)
+        if (selectedPlacedShip is { } selectedShip)
+        {
+            preview = PreviewCellsForShip(origin, selectedShip.Count, ResolveOrientation(selectedShip));
+            previewValid = true;
+            return;
+        }
+
+        if (selectedLength is not { } length)
         {
             preview = [];
             return;
@@ -242,7 +269,6 @@ else
 
     private void ClearHover()
     {
-        hoveredCell = null;
         preview = [];
     }
 
@@ -279,20 +305,62 @@ else
         if (busy || state is null || state.Phase != GamePhase.Setup)
             return;
 
+        if (selectedPlacedShip is { } selectedShip)
+        {
+            var source = GrabCell(selectedShip);
+            var targetOrientation = ResolveOrientation(selectedShip);
+            selectedLength = null;
+            selectedPlacedShip = null;
+            preview = [];
+            await Prepare(version => Api.MoveShipAsync(Guid.Parse(Id), source, origin, targetOrientation, version));
+            return;
+        }
+
         if (OwnShipCells.Contains(origin))
         {
             var ship = state.Player.Ships.FirstOrDefault(s => s.Contains(origin));
             if (ship is null)
                 return;
 
-            var source = ship.First();
-            var targetOrientation = ship.Count == 1 ? orientation : ship.All(cell => cell.Row == ship[0].Row) ? Orientation.Horizontal : Orientation.Vertical;
-            await Prepare(version => Api.MoveShipAsync(Guid.Parse(Id), source, origin, targetOrientation, version));
+            selectedLength = null;
+            selectedPortIndex = null;
+            selectedPlacedShip = ship;
+            preview = [];
             return;
         }
 
         if (selectedLength is { } length)
+        {
             await Prepare(version => Api.PlaceShipAsync(Guid.Parse(Id), origin, length, orientation, version));
+            selectedLength = null;
+            selectedPortIndex = null;
+            preview = [];
+        }
+    }
+
+    private IReadOnlyList<Coordinate> PreviewCellsForShip(Coordinate origin, int length, Orientation shipOrientation)
+    {
+        return [.. Enumerable.Range(0, length).Select(offset => shipOrientation == Orientation.Horizontal
+            ? origin with { Column = origin.Column + offset }
+            : origin with { Row = origin.Row + offset })];
+    }
+
+    private static Orientation ResolveOrientation(IReadOnlyList<Coordinate> ship)
+        => ship.Count == 1 ? Orientation.Horizontal : ship.All(cell => cell.Row == ship[0].Row) ? Orientation.Horizontal : Orientation.Vertical;
+
+    private static Coordinate ShipAnchor(IReadOnlyList<Coordinate> ship) =>
+        ship.OrderBy(cell => cell.Row).ThenBy(cell => cell.Column).First();
+
+    private static Coordinate GrabCell(IReadOnlyList<Coordinate> ship)
+    {
+        if (ship.Count == 1)
+            return ship[0];
+
+        var averageColumn = ship.Average(cell => cell.Column);
+        var averageRow = ship.Average(cell => cell.Row);
+        return ship
+            .OrderBy(cell => Math.Abs(cell.Column - averageColumn) + Math.Abs(cell.Row - averageRow))
+            .First();
     }
 
     private Task PlaceFleetAtRandom() => Prepare(version => Api.PlaceFleetAtRandomAsync(Guid.Parse(Id), version));
@@ -330,8 +398,20 @@ else
         busy = false;
     }
 
-    private void KeepSelectionValid() =>
+    private void KeepSelectionValid()
+    {
         selectedLength = ShipSelection.Keep(selectedLength, state?.Player.RemainingShipLengths ?? []);
+        if (selectedLength is null || selectedPortIndex is not { } index || state is null
+            || index >= state.Player.RemainingShipLengths.Count
+            || state.Player.RemainingShipLengths[index] != selectedLength)
+            selectedPortIndex = null;
+
+        if (selectedPlacedShip is not null && state is not null)
+        {
+            var liveShip = state.Player.Ships.FirstOrDefault(ship => ship.SequenceEqual(selectedPlacedShip));
+            selectedPlacedShip = liveShip ?? null;
+        }
+    }
 
     private async Task Start()
     {
@@ -350,10 +430,9 @@ else
 
         if (result.Turn is { } turn)
         {
-            state = turn.State;
-            message = turn.ComputerShots.Count == 0
+            await AnimateTurn(turn, turn.ComputerShots.Count == 0
                 ? "À toi de jouer."
-                : $"L'ordinateur a commencé : {Describe(turn.ComputerShots)}";
+                : $"L'ordinateur a commencé : {Describe(turn.ComputerShots)}");
         }
         else
         {
@@ -381,11 +460,9 @@ else
             return;
         }
 
-        // Rien n'est affiché avant la réponse : sur un refus, l'état montré reste exactement celui du serveur.
         if (result.Turn is { } turn)
         {
-            state = turn.State;
-            message = Describe(turn);
+            await AnimateTurn(turn, Describe(turn));
         }
         else
         {
@@ -395,6 +472,53 @@ else
         }
 
         busy = false;
+    }
+
+    private async Task AnimateTurn(TurnDto turn, string finalMessage)
+    {
+        var previous = state!;
+        state = turn.State with
+        {
+            Phase = previous.Phase,
+            CurrentTurn = previous.CurrentTurn,
+            Winner = previous.Winner,
+            Player = previous.Player,
+        };
+        await InvokeAsync(StateHasChanged);
+
+        for (var index = 0; index < turn.ComputerShots.Count; index++)
+        {
+            if (index > 0)
+                await Task.Delay(450);
+
+            var shot = turn.ComputerShots[index];
+            var player = state.Player;
+            var misses = shot.Outcome == ShotOutcome.Miss
+                ? [.. player.Misses, shot.Target]
+                : player.Misses;
+            var hits = shot.Outcome is ShotOutcome.Hit or ShotOutcome.Sunk
+                ? [.. player.Hits, shot.Target]
+                : player.Hits;
+            var sunkShips = shot.Outcome == ShotOutcome.Sunk
+                ? [.. player.SunkShips.Concat(turn.State.Player.SunkShips.Where(ship => ship.Contains(shot.Target)))
+                    .DistinctBy(ship => string.Join(',', ship.Select(cell => $"{cell.Column}:{cell.Row}")))]
+                : player.SunkShips;
+
+            state = state with
+            {
+                Player = player with
+                {
+                    Misses = misses,
+                    Hits = hits,
+                    SunkShips = sunkShips,
+                },
+            };
+            await InvokeAsync(StateHasChanged);
+        }
+
+        state = turn.State;
+        message = finalMessage;
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task NewGame()

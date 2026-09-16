@@ -4,8 +4,10 @@
    à quelle grille il correspond. C'est la page qui décide ce qu'elle lui passe, y compris si
    l'aperçu est valide — cette validité vient du serveur. *@
 
-<div class="grille" @onmouseleave="@(() => OnLeave.InvokeAsync())">
-    <h2>@Title</h2>
+<div class="grille @RootCssClass" @onmouseleave="@(() => OnLeave.InvokeAsync())" @onwheel="@((wheel) => OnWheel.InvokeAsync(wheel))" @onwheel:preventDefault>
+    <div class="grille-header">
+        <h2>@Title</h2>
+    </div>
     <table>
         <thead>
             <tr>
@@ -39,6 +41,7 @@
     [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
     [Parameter, EditorRequired] public int Width { get; set; }
     [Parameter, EditorRequired] public int Height { get; set; }
+    [Parameter] public string RootCssClass { get; set; } = string.Empty;
 
     // Navires reçus groupés : c'est ce qui permet d'arrondir les bouts de coque.
     [Parameter] public IReadOnlyList<IReadOnlyList<Coordinate>> Ships { get; set; } = [];
@@ -53,6 +56,7 @@
     // Le composant signale la case cliquée ou survolée ; il ne décide jamais si l'action est permise.
     [Parameter] public EventCallback<Coordinate> OnCellClick { get; set; }
     [Parameter] public EventCallback<Coordinate> OnCellHover { get; set; }
+    [Parameter] public EventCallback<WheelEventArgs> OnWheel { get; set; }
 
     // Souris sortie de la grille : sans ça, le dernier aperçu resterait affiché.
     [Parameter] public EventCallback OnLeave { get; set; }

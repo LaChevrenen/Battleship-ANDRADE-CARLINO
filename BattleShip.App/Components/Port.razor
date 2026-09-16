@@ -4,28 +4,38 @@
    choisie. Un navire retiré de la grille y revient tout seul, puisque la liste vient du serveur. *@
 
 <div class="port">
-    <h2>Port</h2>
+    <div class="port-header">
+        <h2>Port</h2>
+    </div>
+
     @if (RemainingLengths.Count == 0)
     {
-        <p>Flotte complète.</p>
+        <p class="port-empty">Flotte complète.</p>
     }
     else
     {
         <ul>
-            @foreach (var length in RemainingLengths.Distinct().OrderDescending())
+            @foreach (var item in RemainingLengths.Select((length, index) => (length, index)).OrderByDescending(item => item.length))
             {
-                var choix = length;
-                <li>
-                    <button class="navire-port @(Orientation == Orientation.Vertical ? "vertical" : null) @(choix == SelectedLength ? "choisi" : null)"
-                            title="Navire de @choix cases"
-                            @onclick="@(() => OnSelect.InvokeAsync(choix))">
-                        @for (var cell = 0; cell < choix; cell++)
-                        {
-                            <span class="case navire @HullClass(cell, choix)"></span>
-                        }
-                    </button>
-                    <span class="reste">× @RemainingLengths.Count(remaining => remaining == choix)</span>
-                </li>
+                var choix = item.length;
+                var index = item.index;
+                var choisi = index == SelectedIndex;
+                var orientation = choisi ? Orientation : Orientation.Horizontal;
+                @if (!choisi)
+                {
+                    <li>
+                        <button class="navire-port @(orientation == Orientation.Vertical ? "vertical" : null)"
+                                title="Navire de @choix cases"
+                                aria-pressed="false"
+                                @onclick="@(() => OnSelect.InvokeAsync(index))">
+                            @for (var cell = 0; cell < choix; cell++)
+                            {
+                                <span class="case navire @HullClass(cell, choix, orientation)"></span>
+                            }
+                        </button>
+                        <span class="reste">Bateau de @choix cases</span>
+                    </li>
+                }
             }
         </ul>
     }
@@ -33,14 +43,14 @@
 
 @code {
     [Parameter, EditorRequired] public IReadOnlyList<int> RemainingLengths { get; set; } = [];
-    [Parameter] public int? SelectedLength { get; set; }
+    [Parameter] public int? SelectedIndex { get; set; }
     [Parameter] public Orientation Orientation { get; set; } = Orientation.Horizontal;
     [Parameter] public EventCallback<int> OnSelect { get; set; }
 
     // Même coque que sur la grille : une file droite, ouverte sur ses deux extrémités seulement.
-    private string HullClass(int cell, int length)
+    private static string HullClass(int cell, int length, Orientation orientation)
     {
-        var horizontal = Orientation == Orientation.Horizontal;
+        var horizontal = orientation == Orientation.Horizontal;
         var premier = cell == 0;
         var dernier = cell == length - 1;
 

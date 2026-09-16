@@ -1,29 +1,25 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Bataille navale</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+﻿<div class="nav-shell">
+    <div class="brand-block">
+        <div class="brand-mark">⚓</div>
+        <div>
+            <p class="eyebrow">jeu</p>
+            <h1>Bataille navale</h1>
+        </div>
+    </div>
+
+    <nav class="nav-stack">
+        <NavLink class="nav-link active" href="" Match="NavLinkMatch.All">
+            <span aria-hidden="true">⌂</span>
+            <span>Accueil</span>
+        </NavLink>
+    </nav>
+
+    <div class="nav-footer">
+        <p>partie en ligne</p>
+        <span>serveur autoritaire</span>
     </div>
 </div>
 
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Accueil
-            </NavLink>
-        </div>
-    </nav>
-</div>
-
 @code {
-    private bool collapseNavMenu = true;
-
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
-    private void ToggleNavMenu()
-    {
-        collapseNavMenu = !collapseNavMenu;
-    }
+    // Le menu reste esthétique sans comportement de toggle : l’interface de jeu doit rester claire et premium.
 }
