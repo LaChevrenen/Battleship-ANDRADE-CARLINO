@@ -1,7 +1,39 @@
-﻿@page "/"
+@page "/"
+@using BattleShip.App.Services
+@inject GameApiClient Api
+@inject NavigationManager Navigation
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Bataille navale</PageTitle>
 
-<h1>Hello, world!</h1>
+<h1>Bataille navale</h1>
 
-Welcome to your new app.
+<p>Une partie contre l'ordinateur, sur une grille de 10 × 10. Les flottes sont placées par le serveur.</p>
+
+<button @onclick="NewGame" disabled="@creating">Nouvelle partie</button>
+
+@if (error is not null)
+{
+    <p role="alert">@error</p>
+}
+
+@code {
+    private bool creating;
+    private string? error;
+
+    private async Task NewGame()
+    {
+        creating = true;
+        error = null;
+
+        try
+        {
+            var game = await Api.CreateAsync();
+            Navigation.NavigateTo($"/partie/{game.Id}");
+        }
+        catch (HttpRequestException exception)
+        {
+            error = $"L'API n'a pas répondu : {exception.Message}";
+            creating = false;
+        }
+    }
+}

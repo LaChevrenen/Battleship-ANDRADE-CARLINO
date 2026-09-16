@@ -1,0 +1,116 @@
+@page "/partie/{Id}"
+@using BattleShip.App.Components
+@using BattleShip.App.Services
+@using BattleShip.Models
+@using BattleShip.Models.Dtos
+@* Alias : BattleShip.Protocol et BattleShip.Models déclarent tous deux Coordinate, GamePhase et Side. *@
+@using Proto = BattleShip.Protocol
+@using Grpc.Core
+@inject GameApiClient Api
+@inject Proto.GameService.GameServiceClient GameClient
+@inject NavigationManager Navigation
+
+<PageTitle>Partie @Id</PageTitle>
+
+@if (error is not null)
+{
+    <p role="alert">@error</p>
+    <button @onclick="@(() => Navigation.NavigateTo("/"))">Nouvelle partie</button>
+}
+else if (state is null)
+{
+    <p>Chargement…</p>
+}
+else
+{
+    <p>
+        Phase : @state.Phase
+        @if (state.CurrentTurn is { } turn)
+        {
+            <text> — tour : @turn</text>
+        }
+    </p>
+
+    @if (state.Phase == GamePhase.Setup)
+    {
+        <button @onclick="Start" disabled="@busy">Commencer</button>
+    }
+
+    @if (message is not null)
+    {
+        <p>@message</p>
+    }
+
+    <div class="grilles">
+        <Grid Title="Ma grille"
+              Width="state.Player.Width"
+              Height="state.Player.Height"
+              Ships="OwnShipCells"
+              Misses="state.Player.Misses"
+              Hits="state.Player.Hits" />
+
+        <Grid Title="Grille adverse"
+              Width="state.Opponent.Width"
+              Height="state.Opponent.Height"
+              Misses="state.Opponent.Misses"
+              Hits="state.Opponent.Hits"
+              SunkCells="OpponentSunkCells" />
+    </div>
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = string.Empty;
+
+    private GameStateDto? state;
+    private string? message;
+    private string? error;
+    private bool busy;
+
+    private IReadOnlyCollection<Coordinate> OwnShipCells =>
+        state is null ? [] : [.. state.Player.Ships.SelectMany(ship => ship)];
+
+    private IReadOnlyCollection<Coordinate> OpponentSunkCells =>
+        state is null ? [] : [.. state.Opponent.SunkShips.SelectMany(ship => ship)];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        state = null;
+        message = null;
+        error = null;
+
+        // Lecture de l'état par gRPC-Web : c'est ce chemin qui permet de reprendre la partie après un rechargement.
+        try
+        {
+            var response = await GameClient.GetGameAsync(new Proto.GetGameRequest { GameId = Id });
+            state = GameStateConverter.ToDto(response);
+        }
+        catch (RpcException failure) when (failure.StatusCode == StatusCode.NotFound)
+        {
+            error = "Cette partie n'existe plus sur le serveur. Crée une nouvelle partie.";
+        }
+        catch (RpcException failure) when (failure.StatusCode == StatusCode.InvalidArgument)
+        {
+            error = $"Identifiant refusé : {failure.Status.Detail}";
+        }
+        catch (RpcException failure)
+        {
+            error = $"Lecture de la partie en échec ({failure.StatusCode}) : {failure.Status.Detail}";
+        }
+    }
+
+    private async Task Start()
+    {
+        busy = true;
+
+        var turn = await Api.StartAsync(Guid.Parse(Id));
+        state = turn.State;
+        message = turn.ComputerShots.Count == 0
+            ? "À toi de jouer."
+            : $"L'ordinateur a commencé : {Describe(turn.ComputerShots)}";
+
+        busy = false;
+    }
+
+    private static string Describe(IReadOnlyList<ComputerShotDto> shots) =>
+        string.Join(", ", shots.Select(shot => $"{(char)('A' + shot.Target.Column)}{shot.Target.Row + 1} {shot.Outcome}"));
+}

@@ -1,0 +1,51 @@
+@using BattleShip.Models
+
+@* Ce composant n'applique aucune règle : il peint les listes de cases qu'on lui donne et ignore
+   à quelle grille il correspond. C'est la page qui décide ce qu'elle lui passe. *@
+
+<div class="grille">
+    <h2>@Title</h2>
+    <table>
+        <thead>
+            <tr>
+                <th></th>
+                @for (var column = 0; column < Width; column++)
+                {
+                    <th>@((char)('A' + column))</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @for (var row = 0; row < Height; row++)
+            {
+                var currentRow = row;
+                <tr>
+                    <th>@(currentRow + 1)</th>
+                    @for (var column = 0; column < Width; column++)
+                    {
+                        var cell = new Coordinate(column, currentRow);
+                        <td class="case @CssClass(cell)"></td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public int Width { get; set; }
+    [Parameter, EditorRequired] public int Height { get; set; }
+    [Parameter] public IReadOnlyCollection<Coordinate> Ships { get; set; } = [];
+    [Parameter] public IReadOnlyCollection<Coordinate> Misses { get; set; } = [];
+    [Parameter] public IReadOnlyCollection<Coordinate> Hits { get; set; } = [];
+    [Parameter] public IReadOnlyCollection<Coordinate> SunkCells { get; set; } = [];
+
+    // Ordre d'affichage seulement : une case coulée reste touchée, une case touchée porte un navire.
+    private string CssClass(Coordinate cell) =>
+        SunkCells.Contains(cell) ? "coule"
+        : Hits.Contains(cell) ? "touche"
+        : Misses.Contains(cell) ? "rate"
+        : Ships.Contains(cell) ? "navire"
+        : "eau";
+}
