@@ -15,9 +15,10 @@ public static class GameEndpoints
         var games = app.MapGroup("/games");
         games.MapPost("/", Create);
         games.MapGet("/{id:guid}", GetState);
+        games.MapGet("/{id:guid}/placements", ValidOrigins);
         games.MapPost("/{id:guid}/ships", PlaceShip);
-        // POST et non DELETE : le corps porte la version attendue, et DELETE avec corps se manipule mal côté client.
-        games.MapPost("/{id:guid}/ships/undo", RemoveLastShip);
+        // POST et non DELETE : le corps porte la case visée et la version attendue.
+        games.MapPost("/{id:guid}/ships/remove", RemoveShip);
         games.MapPost("/{id:guid}/fleet/random", PlaceFleetAtRandom);
         games.MapPost("/{id:guid}/start", Start);
         games.MapPost("/{id:guid}/shots", Fire);
@@ -52,14 +53,41 @@ public static class GameEndpoints
         return result;
     }
 
-    private static async Task<Results<Ok<GameStateDto>, ValidationProblem, NotFound, Conflict<ProblemDetails>>> RemoveLastShip(
-        Guid id, VersionedRequest request, IValidator<VersionedRequest> validator, GameStore store) =>
-        await PreparationCommand(id, request, validator, store, (stored, version) =>
-            stored.TryRemoveLastShip(version, out var rejection)
-                ? rejection is { } reason
-                    ? Rejection(reason.ToString(), Message(reason))
-                    : null
-                : StaleVersion());
+    private static async Task<Results<Ok<PlacementOriginsDto>, ValidationProblem, NotFound>> ValidOrigins(
+        Guid id, [AsParameters] PlacementOriginsRequest request, IValidator<PlacementOriginsRequest> validator, GameStore store)
+    {
+        var validation = await validator.ValidateAsync(request);
+        if (!validation.IsValid)
+            return TypedResults.ValidationProblem(validation.ToDictionary());
+
+        var length = request.Length!.Value;
+        var orientation = request.Orientation!.Value;
+        if (!store.TryExecute(id, stored => stored.Game.ValidOrigins(length, orientation), out var origins))
+            return TypedResults.NotFound();
+
+        return TypedResults.Ok(new PlacementOriginsDto(length, orientation, origins));
+    }
+
+    private static async Task<Results<Ok<GameStateDto>, ValidationProblem, NotFound, Conflict<ProblemDetails>>> RemoveShip(
+        Guid id, RemoveShipRequest request, IValidator<RemoveShipRequest> validator, GameStore store)
+    {
+        var validation = await validator.ValidateAsync(request);
+        if (!validation.IsValid)
+            return TypedResults.ValidationProblem(validation.ToDictionary());
+
+        var cell = new Coordinate(request.Column!.Value, request.Row!.Value);
+        if (!store.TryExecute(
+                id,
+                stored => stored.TryRemoveShipAt(cell, request.ExpectedVersion!.Value, out var rejection)
+                    ? rejection is { } reason
+                        ? TypedResults.Conflict(Rejection(reason.ToString(), Message(reason)))
+                        : Ok(GameDtoMapper.ToStateDto(stored))
+                    : TypedResults.Conflict(StaleVersion()),
+                out var result))
+            return TypedResults.NotFound();
+
+        return result;
+    }
 
     private static async Task<Results<Ok<GameStateDto>, ValidationProblem, NotFound, Conflict<ProblemDetails>>> PlaceFleetAtRandom(
         Guid id, VersionedRequest request, IValidator<VersionedRequest> validator, GameStore store) =>
@@ -179,7 +207,7 @@ public static class GameEndpoints
         PlacementRejection.Overlap => "Ce navire en chevauche un autre.",
         PlacementRejection.AdjacentShip => "Ce navire en touche un autre par un côté.",
         PlacementRejection.LengthNotAvailable => "Tous les navires de cette longueur sont déjà posés.",
-        PlacementRejection.NoShipToRemove => "Aucun navire à retirer.",
+        PlacementRejection.NoShipHere => "Aucun navire sur cette case.",
         PlacementRejection.NotInSetup => "La partie a déjà commencé : la flotte ne peut plus changer.",
         _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, null),
     };

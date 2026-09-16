@@ -22,6 +22,7 @@ public static class GameStateMessageMapper
                 Misses = { state.Player.Misses.Select(ToMessage) },
                 Hits = { state.Player.Hits.Select(ToMessage) },
                 RemainingShipLengths = { state.Player.RemainingShipLengths },
+                SunkShips = { state.Player.SunkShips.Select(ToCellList) },
             },
             Opponent = new Proto.OpponentBoard
             {

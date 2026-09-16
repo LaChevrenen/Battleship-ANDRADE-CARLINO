@@ -44,6 +44,8 @@ message OwnBoard {
   repeated Coordinate hits = 5;
   // Longueurs qu'il reste à poser pendant la préparation ; vide une fois la partie commencée.
   repeated int32 remaining_ship_lengths = 6;
+  // Mes navires que l'ordinateur a coulés.
+  repeated CellList sunk_ships = 7;
 }
 
 message OpponentBoard {

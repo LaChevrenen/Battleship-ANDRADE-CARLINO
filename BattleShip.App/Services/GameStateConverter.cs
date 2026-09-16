@@ -19,6 +19,7 @@ public static class GameStateConverter
             [.. state.Player.Ships.Select(ToCells)],
             [.. state.Player.Misses.Select(ToDto)],
             [.. state.Player.Hits.Select(ToDto)],
+            [.. state.Player.SunkShips.Select(ToCells)],
             [.. state.Player.RemainingShipLengths]),
         new OpponentBoardDto(
             state.Opponent.Width,

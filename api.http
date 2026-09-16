@@ -36,12 +36,16 @@ Content-Type: application/json
 
 { "column": 7, "row": 3, "length": 4, "orientation": "Horizontal", "expectedVersion": {{place.response.body.$.version}} }
 
-### Retirer le dernier navire posé : 200, la longueur revient dans les restantes
+### Où peut-on poser un navire de 4 cases à l'horizontale : 200, liste des origines valides
+### Le client s'en sert pour colorer l'aperçu ; il ne juge jamais lui-même la validité.
+GET {{api}}/games/{{create.response.body.$.id}}/placements?length=4&orientation=Horizontal
+
+### Retirer un navire en cliquant sur une de ses cases : 200, la longueur revient dans les restantes
 # @name undo
-POST {{api}}/games/{{create.response.body.$.id}}/ships/undo
+POST {{api}}/games/{{create.response.body.$.id}}/ships/remove
 Content-Type: application/json
 
-{ "expectedVersion": {{place.response.body.$.version}} }
+{ "column": 2, "row": 0, "expectedVersion": {{place.response.body.$.version}} }
 
 ### Tirer toute la flotte au hasard : 200, plus rien à poser
 # @name fleet

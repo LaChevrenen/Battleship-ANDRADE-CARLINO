@@ -59,16 +59,43 @@ public sealed class FleetPlacementTests
     }
 
     [Fact]
-    public void Retirer_le_dernier_navire_rend_sa_longueur()
+    public void Retirer_un_navire_par_une_de_ses_cases_rend_sa_longueur()
     {
         var fleet = NewFleet();
         fleet.TryPlace(new(0, 0), 3, Orientation.Horizontal);
 
-        Assert.True(fleet.TryRemoveLast());
+        // Une case du milieu : le joueur clique n'importe où sur le navire.
+        Assert.True(fleet.TryRemoveAt(new(1, 0)));
 
         Assert.Equal<int>([2, 3], fleet.RemainingLengths.Order());
         Assert.Empty(fleet.Ships);
-        Assert.False(fleet.TryRemoveLast());
+        Assert.False(fleet.TryRemoveAt(new(1, 0)));
+    }
+
+    [Fact]
+    public void Les_origines_valides_excluent_les_cases_refusees_par_les_regles()
+    {
+        var fleet = NewFleet();
+        fleet.TryPlace(new(0, 0), 3, Orientation.Horizontal);
+
+        var origins = fleet.ValidOrigins(2, Orientation.Horizontal);
+
+        // Ni chevauchement, ni contact par un côté, ni débordement : (0,0) et (0,1) sont exclus, (0,2) reste.
+        Assert.DoesNotContain(new Coordinate(0, 0), origins);
+        Assert.DoesNotContain(new Coordinate(0, 1), origins);
+        Assert.Contains(new Coordinate(0, 2), origins);
+        Assert.DoesNotContain(new Coordinate(9, 5), origins);
+        Assert.All(origins, origin => Assert.Null(
+            PlacementRules.Check(PlacementRules.Cells(origin, 2, Orientation.Horizontal), 10, 10, fleet.Ships)));
+    }
+
+    [Fact]
+    public void Une_longueur_deja_posee_n_a_plus_aucune_origine_valide()
+    {
+        var fleet = NewFleet();
+        fleet.TryPlace(new(0, 0), 3, Orientation.Horizontal);
+
+        Assert.Empty(fleet.ValidOrigins(3, Orientation.Horizontal));
     }
 
     [Fact]
@@ -117,8 +144,9 @@ public sealed class FleetPlacementTests
         var playerBoard = game.PlayerBoard;
 
         Assert.Equal(PlacementRejection.NotInSetup, game.TryPlaceShip(new(5, 5), 1, Orientation.Horizontal));
-        Assert.Equal(PlacementRejection.NotInSetup, game.TryRemoveLastShip());
+        Assert.Equal(PlacementRejection.NotInSetup, game.TryRemoveShipAt(new(0, 0)));
         Assert.Equal(PlacementRejection.NotInSetup, game.TryPlaceFleetAtRandom());
+        Assert.Empty(game.ValidOrigins(1, Orientation.Horizontal));
 
         // La flotte a été figée au démarrage : aucune de ces opérations n'a d'objet à modifier.
         Assert.Same(playerBoard, game.PlayerBoard);

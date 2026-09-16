@@ -38,6 +38,8 @@ public static class GameDtoMapper
             [.. board.Ships.Select(ship => ship.Cells.ToList())],
             [.. computerShots.Misses],
             [.. computerShots.Hits],
+            // Mes navires coulés viennent de la vue : la règle « coulé » reste côté serveur.
+            [.. computerShots.SunkShips.Select(cells => cells.ToList())],
             [.. remainingShipLengths]);
     }
 

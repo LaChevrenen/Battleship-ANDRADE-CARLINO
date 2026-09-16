@@ -6,6 +6,6 @@ public enum PlacementRejection
     Overlap,
     AdjacentShip,
     LengthNotAvailable,
-    NoShipToRemove,
+    NoShipHere,
     NotInSetup
 }

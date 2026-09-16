@@ -28,8 +28,18 @@ public sealed class GameApiClient(HttpClient http)
             new PlaceShipRequest(origin.Column, origin.Row, length, orientation, expectedVersion),
             Json));
 
-    public async Task<PreparationResult> UndoShipAsync(Guid id, int expectedVersion) =>
-        await ReadState(await http.PostAsJsonAsync($"/games/{id}/ships/undo", new VersionedRequest(expectedVersion), Json));
+    public async Task<PreparationResult> RemoveShipAsync(Guid id, Coordinate cell, int expectedVersion) =>
+        await ReadState(await http.PostAsJsonAsync(
+            $"/games/{id}/ships/remove",
+            new RemoveShipRequest(cell.Column, cell.Row, expectedVersion),
+            Json));
+
+    public async Task<IReadOnlyList<Coordinate>> ValidOriginsAsync(Guid id, int length, Orientation orientation)
+    {
+        var response = await http.GetFromJsonAsync<PlacementOriginsDto>(
+            $"/games/{id}/placements?length={length}&orientation={orientation}", Json);
+        return response?.Origins ?? [];
+    }
 
     public async Task<PreparationResult> PlaceFleetAtRandomAsync(Guid id, int expectedVersion) =>
         await ReadState(await http.PostAsJsonAsync($"/games/{id}/fleet/random", new VersionedRequest(expectedVersion), Json));

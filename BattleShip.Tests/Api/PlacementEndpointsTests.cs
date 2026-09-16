@@ -33,11 +33,17 @@ public sealed class PlacementEndpointsTests : IClassFixture<WebApplicationFactor
     private Task<HttpResponseMessage> PlaceShip(Guid id, int column, int row, int length, Orientation orientation, int version) =>
         client.PostAsJsonAsync($"/games/{id}/ships", new { column, row, length, orientation = orientation.ToString(), expectedVersion = version }, Json);
 
-    private Task<HttpResponseMessage> Undo(Guid id, int version) =>
-        client.PostAsJsonAsync($"/games/{id}/ships/undo", new { expectedVersion = version }, Json);
+    private Task<HttpResponseMessage> RemoveShip(Guid id, int column, int row, int version) =>
+        client.PostAsJsonAsync($"/games/{id}/ships/remove", new { column, row, expectedVersion = version }, Json);
+
+    private async Task<PlacementOriginsDto> ValidOrigins(Guid id, int length, Orientation orientation) =>
+        (await client.GetFromJsonAsync<PlacementOriginsDto>($"/games/{id}/placements?length={length}&orientation={orientation}", Json))!;
 
     private Task<HttpResponseMessage> PlaceAtRandom(Guid id, int version) =>
         client.PostAsJsonAsync($"/games/{id}/fleet/random", new { expectedVersion = version }, Json);
+
+    private async Task<GameStateDto> GetState(Guid id) =>
+        (await client.GetFromJsonAsync<GameStateDto>($"/games/{id}", Json))!;
 
     private static async Task<GameStateDto> State(HttpResponseMessage response) =>
         (await response.Content.ReadFromJsonAsync<GameStateDto>(Json))!;
@@ -133,13 +139,61 @@ public sealed class PlacementEndpointsTests : IClassFixture<WebApplicationFactor
         var created = await CreateGame();
         var afterFirst = await State(await PlaceShip(created.Id, 0, 0, 5, Orientation.Horizontal, created.Version));
 
-        var undone = await State(await Undo(created.Id, afterFirst.Version));
+        // Une case du milieu du navire : le joueur clique n'importe où dessus.
+        var undone = await State(await RemoveShip(created.Id, 2, 0, afterFirst.Version));
 
         Assert.Empty(undone.Player.Ships);
         Assert.Equal<int>([2, 3, 3, 4, 5], undone.Player.RemainingShipLengths.Order());
-        var empty = await Undo(created.Id, undone.Version);
+        var empty = await RemoveShip(created.Id, 2, 0, undone.Version);
         Assert.Equal(HttpStatusCode.Conflict, empty.StatusCode);
-        Assert.Equal("NoShipToRemove", await RejectionOf(empty));
+        Assert.Equal("NoShipHere", await RejectionOf(empty));
+    }
+
+    [Fact]
+    public async Task Le_serveur_annonce_les_origines_valides_du_navire_choisi()
+    {
+        var created = await CreateGame();
+        var afterFirst = await State(await PlaceShip(created.Id, 0, 0, 5, Orientation.Horizontal, created.Version));
+
+        var origins = await ValidOrigins(created.Id, 4, Orientation.Horizontal);
+
+        Assert.Equal(4, origins.Length);
+        Assert.Equal(Orientation.Horizontal, origins.Orientation);
+        // Collé sous le navire posé, ou débordant à droite : ces origines ne sont pas proposées.
+        Assert.DoesNotContain(new Coordinate(0, 1), origins.Origins);
+        Assert.DoesNotContain(new Coordinate(7, 5), origins.Origins);
+        Assert.Contains(new Coordinate(0, 2), origins.Origins);
+        Assert.Equal(afterFirst.Version, (await GetState(created.Id)).Version);
+    }
+
+    [Fact]
+    public async Task Les_origines_valides_d_une_longueur_deja_posee_sont_vides()
+    {
+        var created = await CreateGame();
+        await PlaceShip(created.Id, 0, 0, 5, Orientation.Horizontal, created.Version);
+
+        Assert.Empty((await ValidOrigins(created.Id, 5, Orientation.Horizontal)).Origins);
+    }
+
+    [Theory]
+    [InlineData("length=0&orientation=Horizontal")]
+    [InlineData("orientation=Horizontal")]
+    [InlineData("length=4")]
+    public async Task Une_demande_d_origines_mal_formee_renvoie_400(string query)
+    {
+        var created = await CreateGame();
+
+        var response = await client.GetAsync($"/games/{created.Id}/placements?{query}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Les_origines_valides_d_une_partie_inconnue_renvoient_404()
+    {
+        var response = await client.GetAsync($"/games/{Guid.NewGuid()}/placements?length=4&orientation=Horizontal");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
@@ -175,7 +229,7 @@ public sealed class PlacementEndpointsTests : IClassFixture<WebApplicationFactor
         var started = (await (await client.PostAsync($"/games/{created.Id}/start", null)).Content.ReadFromJsonAsync<TurnDto>(Json))!.State;
 
         var place = await PlaceShip(created.Id, 0, 0, 5, Orientation.Horizontal, started.Version);
-        var undo = await Undo(created.Id, started.Version);
+        var undo = await RemoveShip(created.Id, 0, 0, started.Version);
         var random = await PlaceAtRandom(created.Id, started.Version);
 
         Assert.Equal("NotInSetup", await RejectionOf(place));

@@ -40,13 +40,13 @@ public sealed class StoredGame(Guid id, Game game)
         return true;
     }
 
-    public bool TryRemoveLastShip(int expectedVersion, out PlacementRejection? rejection)
+    public bool TryRemoveShipAt(Coordinate cell, int expectedVersion, out PlacementRejection? rejection)
     {
         rejection = null;
         if (expectedVersion != Version)
             return false;
 
-        rejection = Game.TryRemoveLastShip();
+        rejection = Game.TryRemoveShipAt(cell);
         if (rejection is null)
             Version++;
 

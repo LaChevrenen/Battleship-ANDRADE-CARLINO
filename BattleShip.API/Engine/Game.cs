@@ -37,14 +37,18 @@ public sealed class Game(FleetUnderConstruction playerFleet, Board computerBoard
         return rejection;
     }
 
-    public PlacementRejection? TryRemoveLastShip()
+    // Origines valides pour la préparation : vide une fois la partie commencée, faute de flotte à modifier.
+    public IReadOnlyList<Coordinate> ValidOrigins(int length, Orientation orientation) =>
+        fleetUnderConstruction?.ValidOrigins(length, orientation) ?? [];
+
+    public PlacementRejection? TryRemoveShipAt(Coordinate cell)
     {
-        // Deux motifs distincts : après le démarrage, dire « aucun navire à retirer » serait faux.
+        // Deux motifs distincts : après le démarrage, dire « aucun navire ici » serait faux.
         if (fleetUnderConstruction is null)
             return PlacementRejection.NotInSetup;
 
-        if (!fleetUnderConstruction.TryRemoveLast())
-            return PlacementRejection.NoShipToRemove;
+        if (!fleetUnderConstruction.TryRemoveAt(cell))
+            return PlacementRejection.NoShipHere;
 
         PlayerBoard = fleetUnderConstruction.ToBoard();
         return null;

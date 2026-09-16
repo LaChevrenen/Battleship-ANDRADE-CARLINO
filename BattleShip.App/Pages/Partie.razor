@@ -53,7 +53,7 @@ else
                     Orientation : @(orientation == Orientation.Horizontal ? "horizontale" : "verticale")
                 </button>
                 <button @onclick="PlaceFleetAtRandom" disabled="@busy">Placement aléatoire</button>
-                <button @onclick="UndoShip" disabled="@busy">Défaire</button>
+                <span>Clique un navire posé pour le retirer.</span>
                 <button @onclick="Start" disabled="@(busy || state.Player.RemainingShipLengths.Count > 0)">Commencer</button>
             </div>
         }
@@ -163,15 +163,21 @@ else
                 : origin with { Row = origin.Row + offset })]
             : [];
 
+    // Un clic sur ma grille pose le navire choisi, ou retire celui qui occupe déjà la case.
     private async Task PlaceShip(Coordinate origin)
     {
-        if (busy || state is null || state.Phase != GamePhase.Setup || selectedLength is not { } length)
+        if (busy || state is null || state.Phase != GamePhase.Setup)
             return;
 
-        await Prepare(version => Api.PlaceShipAsync(Guid.Parse(Id), origin, length, orientation, version));
-    }
+        if (OwnShipCells.Contains(origin))
+        {
+            await Prepare(version => Api.RemoveShipAsync(Guid.Parse(Id), origin, version));
+            return;
+        }
 
-    private Task UndoShip() => Prepare(version => Api.UndoShipAsync(Guid.Parse(Id), version));
+        if (selectedLength is { } length)
+            await Prepare(version => Api.PlaceShipAsync(Guid.Parse(Id), origin, length, orientation, version));
+    }
 
     private Task PlaceFleetAtRandom() => Prepare(version => Api.PlaceFleetAtRandomAsync(Guid.Parse(Id), version));
 

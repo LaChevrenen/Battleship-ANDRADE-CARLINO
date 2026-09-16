@@ -49,14 +49,32 @@ public sealed class FleetUnderConstruction
         return null;
     }
 
-    public bool TryRemoveLast()
+    public bool TryRemoveAt(Coordinate cell)
     {
-        if (ships.Count == 0)
+        var ship = ships.FirstOrDefault(placed => placed.Occupies(cell));
+        if (ship is null)
             return false;
 
-        remaining.Add(ships[^1].Cells.Count);
-        ships.RemoveAt(ships.Count - 1);
+        ships.Remove(ship);
+        remaining.Add(ship.Cells.Count);
         return true;
+    }
+
+    // Origines où ce navire tient, jugées par les mêmes règles que le placement lui-même.
+    public IReadOnlyList<Coordinate> ValidOrigins(int length, Orientation orientation)
+    {
+        if (!remaining.Contains(length))
+            return [];
+
+        var occupied = ships.SelectMany(ship => ship.Cells).ToHashSet();
+        return
+        [
+            .. from row in Enumerable.Range(0, Height)
+               from column in Enumerable.Range(0, Width)
+               let origin = new Coordinate(column, row)
+               where PlacementRules.Check(PlacementRules.Cells(origin, length, orientation), Width, Height, occupied) is null
+               select origin
+        ];
     }
 
     public bool TryPlaceAtRandom(Random random)
