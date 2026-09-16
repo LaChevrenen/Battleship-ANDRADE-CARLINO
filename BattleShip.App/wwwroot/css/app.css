@@ -123,3 +123,4 @@ code {
 .grille td.rate { background: #eaf4fb; box-shadow: inset 0 0 0 6px #b9cfdd; }
 .grille td.touche { background: #e06c5a; }
 .grille td.coule { background: #7a2f22; }
+.grille td.cliquable { cursor: pointer; }

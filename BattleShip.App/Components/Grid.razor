@@ -24,7 +24,8 @@
                     @for (var column = 0; column < Width; column++)
                     {
                         var cell = new Coordinate(column, currentRow);
-                        <td class="case @CssClass(cell)"></td>
+                        <td class="case @CssClass(cell) @(OnCellClick.HasDelegate ? "cliquable" : null)"
+                            @onclick="@(() => OnCellClick.InvokeAsync(cell))"></td>
                     }
                 </tr>
             }
@@ -40,6 +41,9 @@
     [Parameter] public IReadOnlyCollection<Coordinate> Misses { get; set; } = [];
     [Parameter] public IReadOnlyCollection<Coordinate> Hits { get; set; } = [];
     [Parameter] public IReadOnlyCollection<Coordinate> SunkCells { get; set; } = [];
+
+    // Le composant signale la case cliquée ; il ne décide jamais si le tir est permis.
+    [Parameter] public EventCallback<Coordinate> OnCellClick { get; set; }
 
     // Ordre d'affichage seulement : une case coulée reste touchée, une case touchée porte un navire.
     private string CssClass(Coordinate cell) =>

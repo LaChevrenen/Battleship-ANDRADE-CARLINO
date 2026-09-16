@@ -15,7 +15,7 @@
 @if (error is not null)
 {
     <p role="alert">@error</p>
-    <button @onclick="@(() => Navigation.NavigateTo("/"))">Nouvelle partie</button>
+    <button @onclick="NewGame">Nouvelle partie</button>
 }
 else if (state is null)
 {
@@ -23,22 +23,35 @@ else if (state is null)
 }
 else
 {
-    <p>
-        Phase : @state.Phase
-        @if (state.CurrentTurn is { } turn)
-        {
-            <text> — tour : @turn</text>
-        }
-    </p>
-
-    @if (state.Phase == GamePhase.Setup)
+    @if (state.Phase == GamePhase.Finished)
     {
-        <button @onclick="Start" disabled="@busy">Commencer</button>
+        <h2>@(state.Winner == Side.Player ? "Tu as gagné." : "L'ordinateur a gagné.")</h2>
+        <button @onclick="NewGame">Nouvelle partie</button>
+    }
+    else
+    {
+        <p>
+            Phase : @state.Phase
+            @if (state.CurrentTurn is { } turn)
+            {
+                <text> — tour : @turn</text>
+            }
+        </p>
+
+        @if (state.Phase == GamePhase.Setup)
+        {
+            <button @onclick="Start" disabled="@busy">Commencer</button>
+        }
     }
 
     @if (message is not null)
     {
         <p>@message</p>
+    }
+
+    @if (refusal is not null)
+    {
+        <p role="alert">Tir refusé : @refusal</p>
     }
 
     <div class="grilles">
@@ -54,7 +67,8 @@ else
               Height="state.Opponent.Height"
               Misses="state.Opponent.Misses"
               Hits="state.Opponent.Hits"
-              SunkCells="OpponentSunkCells" />
+              SunkCells="OpponentSunkCells"
+              OnCellClick="Fire" />
     </div>
 }
 
@@ -63,6 +77,7 @@ else
 
     private GameStateDto? state;
     private string? message;
+    private string? refusal;
     private string? error;
     private bool busy;
 
@@ -72,13 +87,19 @@ else
     private IReadOnlyCollection<Coordinate> OpponentSunkCells =>
         state is null ? [] : [.. state.Opponent.SunkShips.SelectMany(ship => ship)];
 
-    protected override async Task OnParametersSetAsync()
+    protected override Task OnParametersSetAsync()
+    {
+        message = null;
+        refusal = null;
+        return LoadState();
+    }
+
+    // Lecture de l'état par gRPC-Web : c'est ce chemin qui permet de reprendre la partie après un rechargement.
+    private async Task LoadState()
     {
         state = null;
-        message = null;
         error = null;
 
-        // Lecture de l'état par gRPC-Web : c'est ce chemin qui permet de reprendre la partie après un rechargement.
         try
         {
             var response = await GameClient.GetGameAsync(new Proto.GetGameRequest { GameId = Id });
@@ -101,6 +122,7 @@ else
     private async Task Start()
     {
         busy = true;
+        refusal = null;
 
         var turn = await Api.StartAsync(Guid.Parse(Id));
         state = turn.State;
@@ -111,6 +133,65 @@ else
         busy = false;
     }
 
+    private async Task Fire(Coordinate target)
+    {
+        if (busy || state is null)
+            return;
+
+        busy = true;
+        refusal = null;
+
+        var result = await Api.FireAsync(Guid.Parse(Id), target.Column, target.Row, state.Version);
+
+        // Rien n'est affiché avant la réponse : sur un refus, l'état montré reste exactement celui du serveur.
+        if (result.Turn is { } turn)
+        {
+            state = turn.State;
+            message = Describe(turn);
+        }
+        else
+        {
+            refusal = result.Refusal;
+            if (result.MustReload)
+                await LoadState();
+        }
+
+        busy = false;
+    }
+
+    private async Task NewGame()
+    {
+        var game = await Api.CreateAsync();
+        Navigation.NavigateTo($"/partie/{game.Id}");
+    }
+
+    private static string Describe(TurnDto turn)
+    {
+        var mine = turn.PlayerOutcome switch
+        {
+            ShotOutcome.Miss => "À l'eau.",
+            ShotOutcome.Hit => "Touché.",
+            ShotOutcome.Sunk => $"Coulé : {Describe(turn.SunkShip ?? [])}.",
+            _ => string.Empty,
+        };
+
+        return turn.ComputerShots.Count == 0
+            ? mine
+            : $"{mine} L'ordinateur a joué : {Describe(turn.ComputerShots)}";
+    }
+
     private static string Describe(IReadOnlyList<ComputerShotDto> shots) =>
-        string.Join(", ", shots.Select(shot => $"{(char)('A' + shot.Target.Column)}{shot.Target.Row + 1} {shot.Outcome}"));
+        string.Join(", ", shots.Select(shot => $"{Name(shot.Target)} {Outcome(shot.Outcome)}"));
+
+    private static string Describe(IReadOnlyList<Coordinate> cells) => string.Join(", ", cells.Select(Name));
+
+    private static string Name(Coordinate cell) => $"{(char)('A' + cell.Column)}{cell.Row + 1}";
+
+    private static string Outcome(ShotOutcome outcome) => outcome switch
+    {
+        ShotOutcome.Miss => "à l'eau",
+        ShotOutcome.Hit => "touché",
+        ShotOutcome.Sunk => "coulé",
+        _ => outcome.ToString(),
+    };
 }
