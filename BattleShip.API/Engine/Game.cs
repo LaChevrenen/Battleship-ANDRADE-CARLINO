@@ -41,6 +41,18 @@ public sealed class Game(FleetUnderConstruction playerFleet, Board computerBoard
     public IReadOnlyList<Coordinate> ValidOrigins(int length, Orientation orientation) =>
         fleetUnderConstruction?.ValidOrigins(length, orientation) ?? [];
 
+    public PlacementRejection? TryRotateShipAt(Coordinate cell)
+    {
+        if (fleetUnderConstruction is null)
+            return PlacementRejection.NotInSetup;
+
+        var rejection = fleetUnderConstruction.TryRotateAt(cell);
+        if (rejection is null)
+            PlayerBoard = fleetUnderConstruction.ToBoard();
+
+        return rejection;
+    }
+
     public PlacementRejection? TryRemoveShipAt(Coordinate cell)
     {
         // Deux motifs distincts : après le démarrage, dire « aucun navire ici » serait faux.

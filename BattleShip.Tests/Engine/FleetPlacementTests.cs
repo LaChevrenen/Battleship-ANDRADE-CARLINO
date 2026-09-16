@@ -16,6 +16,10 @@ public sealed class FleetPlacementTests
 
     private static Coordinate ChooseComputerTarget(RevealedBoard view) => HuntTargetStrategy.ChooseTarget(view, new Random(0));
 
+    // Cells est un ensemble, sans ordre garanti, et Coordinate n'implémente pas IComparable.
+    private static IEnumerable<Coordinate> Ordered(IEnumerable<Coordinate> cells) =>
+        cells.OrderBy(cell => cell.Row).ThenBy(cell => cell.Column);
+
     [Fact]
     public void Une_flotte_neuve_attend_toutes_ses_longueurs()
     {
@@ -145,6 +149,7 @@ public sealed class FleetPlacementTests
 
         Assert.Equal(PlacementRejection.NotInSetup, game.TryPlaceShip(new(5, 5), 1, Orientation.Horizontal));
         Assert.Equal(PlacementRejection.NotInSetup, game.TryRemoveShipAt(new(0, 0)));
+        Assert.Equal(PlacementRejection.NotInSetup, game.TryRotateShipAt(new(0, 0)));
         Assert.Equal(PlacementRejection.NotInSetup, game.TryPlaceFleetAtRandom());
         Assert.Empty(game.ValidOrigins(1, Orientation.Horizontal));
 
@@ -152,5 +157,94 @@ public sealed class FleetPlacementTests
         Assert.Same(playerBoard, game.PlayerBoard);
         Assert.Equal<Coordinate>([new(0, 0)], Assert.Single(game.PlayerBoard.Ships).Cells);
         Assert.Empty(game.RemainingShipLengths);
+    }
+
+    [Fact]
+    public void Un_navire_pivote_autour_de_son_origine()
+    {
+        var fleet = NewFleet();
+        fleet.TryPlace(new(0, 0), 3, Orientation.Horizontal);
+
+        // Une case du milieu : le joueur survole n'importe où sur le navire.
+        Assert.Null(fleet.TryRotateAt(new(1, 0)));
+
+        Assert.Equal<Coordinate>([new(0, 0), new(0, 1), new(0, 2)], Ordered(Assert.Single(fleet.Ships).Cells));
+        Assert.Equal<int>([2], fleet.RemainingLengths);
+    }
+
+    [Fact]
+    public void Un_navire_pivote_deux_fois_revient_a_sa_position_de_depart()
+    {
+        var fleet = NewFleet();
+        fleet.TryPlace(new(4, 4), 3, Orientation.Horizontal);
+
+        Assert.Null(fleet.TryRotateAt(new(4, 4)));
+        Assert.Null(fleet.TryRotateAt(new(4, 4)));
+
+        Assert.Equal<Coordinate>([new(4, 4), new(5, 4), new(6, 4)], Ordered(Assert.Single(fleet.Ships).Cells));
+    }
+
+    [Fact]
+    public void Un_navire_ne_se_gene_pas_lui_meme_en_pivotant()
+    {
+        var fleet = NewFleet();
+        fleet.TryPlace(new(5, 5), 2, Orientation.Horizontal);
+
+        // Le navire pivoté garde sa case d'origine et jouxte celle qu'il occupait : sans exclure
+        // le navire de sa propre validation, ce serait refusé en Overlap ou en AdjacentShip.
+        Assert.Null(fleet.TryRotateAt(new(5, 5)));
+
+        Assert.Equal<Coordinate>([new(5, 5), new(5, 6)], Ordered(Assert.Single(fleet.Ships).Cells));
+    }
+
+    [Fact]
+    public void Un_navire_qui_sortirait_de_la_grille_en_pivotant_est_refuse_sans_rien_changer()
+    {
+        var fleet = NewFleet();
+        fleet.TryPlace(new(0, 8), 3, Orientation.Horizontal);
+
+        Assert.Equal(PlacementRejection.OutOfBounds, fleet.TryRotateAt(new(0, 8)));
+
+        // La flotte n'a pas été démontée entre-temps : elle reste exactement ce qu'elle était.
+        Assert.Equal<Coordinate>([new(0, 8), new(1, 8), new(2, 8)], Ordered(Assert.Single(fleet.Ships).Cells));
+        Assert.Equal<int>([2], fleet.RemainingLengths);
+    }
+
+    [Fact]
+    public void Un_navire_qui_en_toucherait_un_autre_en_pivotant_est_refuse_sans_rien_changer()
+    {
+        var fleet = NewFleet();
+        fleet.TryPlace(new(0, 0), 3, Orientation.Horizontal);
+        fleet.TryPlace(new(1, 2), 2, Orientation.Horizontal);
+
+        Assert.Equal(PlacementRejection.AdjacentShip, fleet.TryRotateAt(new(2, 0)));
+
+        Assert.Equal(2, fleet.Ships.Count);
+        Assert.Contains(fleet.Ships, ship => ship.Occupies(new(2, 0)));
+        Assert.Empty(fleet.RemainingLengths);
+    }
+
+    [Fact]
+    public void Pivoter_une_case_vide_est_refuse()
+    {
+        var fleet = NewFleet();
+        fleet.TryPlace(new(0, 0), 3, Orientation.Horizontal);
+
+        Assert.Equal(PlacementRejection.NoShipHere, fleet.TryRotateAt(new(5, 5)));
+
+        Assert.Single(fleet.Ships);
+    }
+
+    [Fact]
+    public void Une_rotation_acceptee_remplace_la_grille_du_joueur()
+    {
+        var game = NewGame(TwoShips);
+        game.TryPlaceShip(new(0, 0), 3, Orientation.Horizontal);
+        var before = game.PlayerBoard;
+
+        Assert.Null(game.TryRotateShipAt(new(1, 0)));
+
+        Assert.NotSame(before, game.PlayerBoard);
+        Assert.Equal<Coordinate>([new(0, 0), new(0, 1), new(0, 2)], Ordered(Assert.Single(game.PlayerBoard.Ships).Cells));
     }
 }
