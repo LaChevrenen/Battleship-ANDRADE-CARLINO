@@ -41,10 +41,9 @@ else
         @if (state.Phase == GamePhase.Setup)
         {
             <div class="preparation">
-                <button @onclick="ToggleOrientation" title="Touche R ou molette de la souris">
-                    Orientation : @(orientation == Orientation.Horizontal ? "horizontale" : "verticale")
-                </button>
-                <span>Touche <kbd>R</kbd> ou molette pour pivoter.</span>
+                @* L'orientation courante se lit dans le port, qui dessine les navires restants
+                   dans cette orientation : pas de libellé à tenir à jour en double. *@
+                <span>Touche <kbd>R</kbd> ou molette pour pivoter le navire choisi.</span>
                 <button @onclick="PlaceFleetAtRandom" disabled="@busy">Placement aléatoire</button>
                 <span>Clique un navire posé pour le retirer.</span>
                 <button @onclick="Start" disabled="@(busy || state.Player.RemainingShipLengths.Count > 0)">Commencer</button>
