@@ -7,4 +7,5 @@ public sealed record GameStateDto(
     Side? CurrentTurn,
     Side? Winner,
     OwnBoardDto Player,
-    OpponentBoardDto Opponent);
+    OpponentBoardDto Opponent,
+    GameStatisticsDto Statistics);

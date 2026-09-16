@@ -15,6 +15,7 @@ public static class GameEndpoints
         var games = app.MapGroup("/games");
         games.MapPost("/", Create);
         games.MapGet("/", List);
+        games.MapDelete("/{id:guid}", Delete);
         games.MapGet("/{id:guid}", GetState);
         games.MapGet("/{id:guid}/placements", ValidOrigins);
         games.MapPost("/{id:guid}/ships", PlaceShip);
@@ -23,19 +24,25 @@ public static class GameEndpoints
         games.MapPost("/{id:guid}/ships/rotate", RotateShip);
         games.MapPost("/{id:guid}/ships/move", MoveShip);
         games.MapPost("/{id:guid}/fleet/random", PlaceFleetAtRandom);
+        games.MapPost("/{id:guid}/fleet/reset", ResetFleet);
         games.MapPost("/{id:guid}/start", Start);
         games.MapPost("/{id:guid}/shots", Fire);
         return app;
     }
 
-    private static Created<GameStateDto> Create(GameStore store, Random random)
+    private static Created<GameStateDto> Create(GameStore store, Random random, AiDifficulty? difficulty)
     {
-        var state = store.Add(Game.CreateWithRandomComputerFleet(random), GameDtoMapper.ToStateDto);
+        var state = store.Add(
+            Game.CreateWithRandomComputerFleet(random, difficulty ?? AiDifficulty.Normal),
+            GameDtoMapper.ToStateDto);
         return TypedResults.Created($"/games/{state.Id}", state);
     }
 
     private static Ok<IReadOnlyList<GameSummaryDto>> List(GameStore store) =>
         TypedResults.Ok(store.ListSummaries());
+
+    private static Results<NoContent, NotFound> Delete(Guid id, GameStore store) =>
+        store.TryRemove(id) ? TypedResults.NoContent() : TypedResults.NotFound();
 
     private static Results<Ok<GameStateDto>, NotFound> GetState(Guid id, GameStore store) =>
         store.TryExecute(id, GameDtoMapper.ToStateDto, out var state)
@@ -170,6 +177,15 @@ public static class GameEndpoints
         return result;
     }
 
+    private static Task<Results<Ok<GameStateDto>, ValidationProblem, NotFound, Conflict<ProblemDetails>>> ResetFleet(
+        Guid id, VersionedRequest request, IValidator<VersionedRequest> validator, GameStore store) =>
+        PreparationCommand(id, request, validator, store, (stored, version) =>
+            stored.TryResetFleet(version, out var rejection)
+                ? rejection is { } reason
+                    ? Rejection(reason.ToString(), Message(reason))
+                    : null
+                : StaleVersion());
+
     private static Results<Ok<GameStateDto>, ValidationProblem, NotFound, Conflict<ProblemDetails>> Ok(GameStateDto state) =>
         TypedResults.Ok(state);
 
@@ -213,7 +229,7 @@ public static class GameEndpoints
 
     private static Results<Ok<TurnDto>, NotFound, Conflict<ProblemDetails>> StartLocked(StoredGame stored, Random random)
     {
-        var rejection = stored.TryStart(ChooseComputerTarget(random), out var computerShots);
+        var rejection = stored.TryStart(ChooseComputerTarget(random, stored.Game.Difficulty), out var computerShots);
         if (rejection is not null)
             return TypedResults.Conflict(Rejection(rejection.Value.ToString(), Message(rejection.Value)));
 
@@ -223,7 +239,7 @@ public static class GameEndpoints
     private static Results<Ok<TurnDto>, ValidationProblem, NotFound, Conflict<ProblemDetails>> FireLocked(
         StoredGame stored, Coordinate target, int expectedVersion, Random random)
     {
-        if (!stored.TryFire(target, expectedVersion, ChooseComputerTarget(random), out var turn))
+        if (!stored.TryFire(target, expectedVersion, ChooseComputerTarget(random, stored.Game.Difficulty), out var turn))
             return TypedResults.Conflict(StaleVersion());
 
         return turn.PlayerShot.Rejection switch
@@ -237,8 +253,13 @@ public static class GameEndpoints
     }
 
     // La fonction ne capture que le hasard : l'ordinateur ne voit que la vue que Game lui transmet.
-    private static Func<RevealedBoard, Coordinate> ChooseComputerTarget(Random random) =>
-        view => HuntTargetStrategy.ChooseTarget(view, random);
+    private static Func<RevealedBoard, Coordinate> ChooseComputerTarget(Random random, AiDifficulty difficulty) =>
+        difficulty switch
+        {
+            AiDifficulty.Easy => view => RandomTargetStrategy.ChooseTarget(view, random),
+            AiDifficulty.Hard => view => ProbabilityTargetStrategy.ChooseTarget(view, random),
+            _ => view => HuntTargetStrategy.ChooseTarget(view, random),
+        };
 
     private static ProblemDetails Rejection(string code, string title) => new()
     {

@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using BattleShip.API.Engine;
 using BattleShip.Models;
+using BattleShip.Models.Dtos;
 
 namespace BattleShip.API.Storage;
 
@@ -9,6 +10,10 @@ public sealed class StoredGame(Guid id, Game game)
 {
     public Guid Id { get; } = id;
     public DateTimeOffset CreatedAt { get; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? StartedAt { get; private set; }
+    public DateTimeOffset? FinishedAt { get; private set; }
+    public int PlayerShotCount { get; private set; }
+    public List<ShotHistoryDto> PlayerShotHistory { get; } = [];
     public Game Game { get; } = game;
     public int Version { get; private set; }
 
@@ -16,7 +21,12 @@ public sealed class StoredGame(Guid id, Game game)
     {
         var rejection = Game.TryStart(chooseComputerTarget, out computerShots);
         if (rejection is null)
+        {
             Version++;
+            StartedAt = DateTimeOffset.UtcNow;
+            if (Game.Phase == GamePhase.Finished)
+                FinishedAt = DateTimeOffset.UtcNow;
+        }
 
         return rejection;
     }
@@ -93,6 +103,19 @@ public sealed class StoredGame(Guid id, Game game)
         return true;
     }
 
+    public bool TryResetFleet(int expectedVersion, out PlacementRejection? rejection)
+    {
+        rejection = null;
+        if (expectedVersion != Version)
+            return false;
+
+        rejection = Game.TryResetFleet();
+        if (rejection is null)
+            Version++;
+
+        return true;
+    }
+
     public bool TryFire(
         Coordinate target,
         int expectedVersion,
@@ -108,7 +131,13 @@ public sealed class StoredGame(Guid id, Game game)
         turn = Game.PlayerFire(target, chooseComputerTarget);
         // Un tir refusé ne change pas la partie, donc pas la version.
         if (turn.PlayerShot.IsAccepted)
+        {
             Version++;
+            PlayerShotCount++;
+            PlayerShotHistory.Add(new ShotHistoryDto(target, turn.PlayerShot.Outcome!.Value));
+            if (Game.Phase == GamePhase.Finished)
+                FinishedAt = DateTimeOffset.UtcNow;
+        }
 
         return true;
     }

@@ -32,7 +32,18 @@ public static class GameStateMessageMapper
                 Hits = { state.Opponent.Hits.Select(ToMessage) },
                 SunkShips = { state.Opponent.SunkShips.Select(ToCellList) },
             },
+            Statistics = new Proto.GameStatistics
+            {
+                TotalShots = state.Statistics.TotalShots,
+                SuccessfulShots = state.Statistics.SuccessfulShots,
+                MissedShots = state.Statistics.MissedShots,
+                AccuracyPercentage = state.Statistics.AccuracyPercentage,
+                History = { state.Statistics.History.Select(ToHistory) },
+            },
         };
+
+        if (state.Statistics.DurationSeconds is { } duration)
+            message.Statistics.DurationSeconds = duration;
 
         if (state.CurrentTurn is { } currentTurn)
             message.CurrentTurn = ToMessage(currentTurn);
@@ -45,6 +56,18 @@ public static class GameStateMessageMapper
     private static Proto.Coordinate ToMessage(Dto.Coordinate cell) => new() { Column = cell.Column, Row = cell.Row };
 
     private static Proto.CellList ToCellList(IReadOnlyList<Dto.Coordinate> cells) => new() { Cells = { cells.Select(ToMessage) } };
+
+    private static Proto.ShotHistory ToHistory(ShotHistoryDto shot) => new()
+    {
+        Target = ToMessage(shot.Target),
+        Outcome = shot.Outcome switch
+        {
+            Dto.ShotOutcome.Miss => Proto.ShotOutcome.Miss,
+            Dto.ShotOutcome.Hit => Proto.ShotOutcome.Hit,
+            Dto.ShotOutcome.Sunk => Proto.ShotOutcome.Sunk,
+            _ => throw new ArgumentOutOfRangeException(nameof(shot), shot.Outcome, null),
+        },
+    };
 
     // Correspondance explicite et non un transtypage : en proto la valeur 0 est « non renseigné », les numéros diffèrent.
     private static Proto.GamePhase ToMessage(Dto.GamePhase phase) => phase switch

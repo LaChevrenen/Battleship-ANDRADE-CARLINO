@@ -24,6 +24,13 @@ public sealed class FleetUnderConstruction
     public IReadOnlyList<int> RemainingLengths => remaining;
     public bool IsComplete => remaining.Count == 0;
 
+    public void Reset()
+    {
+        ships.Clear();
+        remaining.Clear();
+        remaining.AddRange(allLengths);
+    }
+
     // Flotte déjà posée : sert au re-tirage aléatoire et aux parties construites pour les tests.
     public static FleetUnderConstruction Placed(int width, int height, IEnumerable<Ship> placed)
     {
@@ -49,7 +56,7 @@ public sealed class FleetUnderConstruction
         return null;
     }
 
-    // Pivot autour de l'origine du navire : sa case en haut à gauche ne bouge pas.
+    // Le point demandé est le pivot : il reste occupé après la rotation.
     // La validité est jugée AVANT toute modification, et contre les autres navires seulement —
     // un navire qui se gênerait lui-même rendrait toute rotation impossible. Sur un refus, rien
     // n'a été retiré : il n'existe aucun instant où la flotte est incomplète.
@@ -62,7 +69,11 @@ public sealed class FleetUnderConstruction
         var origin = ship.Cells.OrderBy(cell => cell.Row).ThenBy(cell => cell.Column).First();
         var horizontal = ship.Cells.All(cell => cell.Row == origin.Row);
         var turned = horizontal ? Orientation.Vertical : Orientation.Horizontal;
-        var cells = PlacementRules.Cells(origin, ship.Cells.Count, turned);
+        var offset = horizontal ? target.Column - origin.Column : target.Row - origin.Row;
+        var turnedOrigin = turned == Orientation.Vertical
+            ? target with { Row = target.Row - offset }
+            : target with { Column = target.Column - offset };
+        var cells = PlacementRules.Cells(turnedOrigin, ship.Cells.Count, turned);
 
         var rejection = PlacementRules.Check(cells, Width, Height, ships.Where(placed => placed != ship));
         if (rejection is not null)

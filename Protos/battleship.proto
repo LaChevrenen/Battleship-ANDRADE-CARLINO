@@ -25,6 +25,7 @@ message GameState {
   optional Side winner = 5;
   OwnBoard player = 6;
   OpponentBoard opponent = 7;
+  GameStatistics statistics = 8;
 }
 
 message Coordinate {
@@ -54,6 +55,27 @@ message OpponentBoard {
   repeated Coordinate misses = 3;
   repeated Coordinate hits = 4;
   repeated CellList sunk_ships = 5;
+}
+
+message GameStatistics {
+  int32 total_shots = 1;
+  int32 successful_shots = 2;
+  int32 missed_shots = 3;
+  int32 accuracy_percentage = 4;
+  optional int32 duration_seconds = 5;
+  repeated ShotHistory history = 6;
+}
+
+message ShotHistory {
+  Coordinate target = 1;
+  ShotOutcome outcome = 2;
+}
+
+enum ShotOutcome {
+  SHOT_OUTCOME_UNSPECIFIED = 0;
+  SHOT_OUTCOME_MISS = 1;
+  SHOT_OUTCOME_HIT = 2;
+  SHOT_OUTCOME_SUNK = 3;
 }
 
 // En proto3, la valeur 0 est celle d'un champ non renseigné : elle ne doit jamais signifier un vrai état.

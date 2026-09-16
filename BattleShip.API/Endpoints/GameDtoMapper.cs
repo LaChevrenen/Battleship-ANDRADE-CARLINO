@@ -1,5 +1,6 @@
 using BattleShip.API.Engine;
 using BattleShip.API.Storage;
+using BattleShip.Models;
 using BattleShip.Models.Dtos;
 
 namespace BattleShip.API.Endpoints;
@@ -17,7 +18,8 @@ public static class GameDtoMapper
             game.Winner,
             ToOwnBoardDto(game.PlayerBoard, game.RemainingShipLengths),
             // Seul accès de l'API à la grille adverse : sa vue révélée, jamais ses navires.
-            ToOpponentBoardDto(game.ComputerBoard.Reveal()));
+            ToOpponentBoardDto(game.ComputerBoard.Reveal()),
+            ToStatistics(stored));
     }
 
     public static TurnDto ToTurnDto(PlayerTurnResult turn, StoredGame stored) =>
@@ -49,6 +51,23 @@ public static class GameDtoMapper
             [.. view.Misses],
             [.. view.Hits],
             [.. view.SunkShips.Select(cells => cells.ToList())]);
+
+    private static GameStatisticsDto ToStatistics(StoredGame stored)
+    {
+        var total = stored.PlayerShotHistory.Count;
+        var successful = stored.PlayerShotHistory.Count(shot => shot.Outcome is ShotOutcome.Hit or ShotOutcome.Sunk);
+        int? duration = stored.StartedAt is not { } startedAt
+            ? null
+            : Math.Max(0, (int)((stored.FinishedAt ?? DateTimeOffset.UtcNow) - startedAt).TotalSeconds);
+
+        return new GameStatisticsDto(
+            total,
+            successful,
+            total - successful,
+            total == 0 ? 0 : (int)Math.Round(successful * 100d / total),
+            duration,
+            [.. stored.PlayerShotHistory]);
+    }
 
     // Game ne transmet que les tirs acceptés de l'ordinateur : leur résultat est toujours renseigné.
     private static ComputerShotDto ToComputerShotDto(ComputerShot shot) =>

@@ -2,13 +2,18 @@ using BattleShip.Models;
 
 namespace BattleShip.API.Engine;
 
-public sealed class Game(FleetUnderConstruction playerFleet, Board computerBoard, Random random)
+public sealed class Game(
+    FleetUnderConstruction playerFleet,
+    Board computerBoard,
+    Random random,
+    AiDifficulty difficulty = AiDifficulty.Normal)
 {
     // Lâchée au démarrage : sans elle, plus rien ne peut modifier la flotte du joueur.
     private FleetUnderConstruction? fleetUnderConstruction = playerFleet;
 
     public Board PlayerBoard { get; private set; } = playerFleet.ToBoard();
     public Board ComputerBoard { get; } = computerBoard;
+    public AiDifficulty Difficulty { get; } = difficulty;
 
     public GamePhase Phase { get; private set; } = GamePhase.Setup;
 
@@ -20,10 +25,11 @@ public sealed class Game(FleetUnderConstruction playerFleet, Board computerBoard
     public IReadOnlyList<int> RemainingShipLengths => fleetUnderConstruction?.RemainingLengths ?? [];
 
     // Seul l'ordinateur est placé à la création : le joueur pose sa flotte lui-même, ou la tire au hasard.
-    public static Game CreateWithRandomComputerFleet(Random random) =>
+    public static Game CreateWithRandomComputerFleet(Random random, AiDifficulty difficulty = AiDifficulty.Normal) =>
         new(new FleetUnderConstruction(GameRules.GridSize, GameRules.GridSize, GameRules.DefaultShipLengths),
             PlaceDefaultFleet(random),
-            random);
+            random,
+            difficulty);
 
     public PlacementRejection? TryPlaceShip(Coordinate origin, int length, Orientation orientation)
     {
@@ -87,6 +93,16 @@ public sealed class Game(FleetUnderConstruction playerFleet, Board computerBoard
         if (!fleetUnderConstruction.TryPlaceAtRandom(random))
             throw new InvalidOperationException("La flotte n'a pas pu être placée au hasard.");
 
+        PlayerBoard = fleetUnderConstruction.ToBoard();
+        return null;
+    }
+
+    public PlacementRejection? TryResetFleet()
+    {
+        if (fleetUnderConstruction is null)
+            return PlacementRejection.NotInSetup;
+
+        fleetUnderConstruction.Reset();
         PlayerBoard = fleetUnderConstruction.ToBoard();
         return null;
     }
