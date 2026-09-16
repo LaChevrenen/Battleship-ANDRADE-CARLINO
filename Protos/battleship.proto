@@ -1,6 +1,8 @@
 syntax = "proto3";
 
-option csharp_namespace = "BattleShip.Grpc";
+// Pas "BattleShip.Grpc" : dans un composant Razor, les using sont générés dans l'espace de noms de la page,
+// et "Grpc.Core" s'y résoudrait en "BattleShip.Grpc.Core", qui n'existe pas.
+option csharp_namespace = "BattleShip.Protocol";
 
 package battleship;
 

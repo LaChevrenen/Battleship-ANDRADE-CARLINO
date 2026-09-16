@@ -1,6 +1,6 @@
-using BattleShip.API.Endpoints;
+﻿using BattleShip.API.Endpoints;
 using BattleShip.API.Storage;
-using BattleShip.Grpc;
+using BattleShip.Protocol;
 using FluentValidation;
 using Grpc.Core;
 

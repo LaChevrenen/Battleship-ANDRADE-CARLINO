@@ -1,6 +1,6 @@
-using BattleShip.Models.Dtos;
+﻿using BattleShip.Models.Dtos;
 using Dto = BattleShip.Models;
-using Proto = BattleShip.Grpc;
+using Proto = BattleShip.Protocol;
 
 namespace BattleShip.API.GrpcServices;
 

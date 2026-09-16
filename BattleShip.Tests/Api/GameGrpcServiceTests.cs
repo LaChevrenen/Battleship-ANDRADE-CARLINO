@@ -1,7 +1,7 @@
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using BattleShip.API.Engine;
 using BattleShip.API.Storage;
-using BattleShip.Grpc;
+using BattleShip.Protocol;
 using Google.Protobuf;
 using Grpc.Core;
 using Grpc.Net.Client;

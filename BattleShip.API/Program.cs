@@ -1,10 +1,10 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using BattleShip.API.Endpoints;
 using BattleShip.API.GrpcServices;
 using BattleShip.API.Storage;
 using BattleShip.API.Validation;
-using BattleShip.Grpc;
 using BattleShip.Models.Dtos;
+using BattleShip.Protocol;
 using FluentValidation;
 
 const string FrontPolicy = "front";

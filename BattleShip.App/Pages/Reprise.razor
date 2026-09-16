@@ -1,0 +1,59 @@
+﻿@page "/reprise"
+@using BattleShip.Protocol
+@using Grpc.Core
+@inject GameService.GameServiceClient GameClient
+
+<PageTitle>Reprise d'une partie</PageTitle>
+
+<h1>Reprise d'une partie</h1>
+
+<p>L'état est lu par gRPC-Web. Saisis l'identifiant renvoyé à la création de la partie.</p>
+
+<input @bind="gameId" placeholder="identifiant de la partie" size="40" />
+<button @onclick="Load">Charger</button>
+
+@if (message is not null)
+{
+    <p role="alert">@message</p>
+}
+
+@if (state is not null)
+{
+    <ul>
+        <li>Phase : @state.Phase</li>
+        <li>Version : @state.Version</li>
+        <li>Tour : @(state.HasCurrentTurn ? state.CurrentTurn.ToString() : "personne")</li>
+        <li>Mes navires : @state.Player.Ships.Count</li>
+        <li>Cases adverses révélées : @(state.Opponent.Hits.Count + state.Opponent.Misses.Count)</li>
+    </ul>
+}
+
+@code {
+    private string gameId = string.Empty;
+    private GameState? state;
+    private string? message;
+
+    private async Task Load()
+    {
+        state = null;
+        message = null;
+
+        try
+        {
+            state = await GameClient.GetGameAsync(new GetGameRequest { GameId = gameId });
+        }
+        catch (RpcException error) when (error.StatusCode == StatusCode.NotFound)
+        {
+            // Cas réel : le serveur a redémarré, la partie n'est plus en mémoire.
+            message = "Cette partie n'existe plus sur le serveur. Crée une nouvelle partie.";
+        }
+        catch (RpcException error) when (error.StatusCode == StatusCode.InvalidArgument)
+        {
+            message = $"Identifiant refusé : {error.Status.Detail}";
+        }
+        catch (RpcException error)
+        {
+            message = $"Appel gRPC en échec ({error.StatusCode}) : {error.Status.Detail}";
+        }
+    }
+}

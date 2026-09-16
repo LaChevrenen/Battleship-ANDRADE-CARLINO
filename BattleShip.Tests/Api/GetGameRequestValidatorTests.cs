@@ -1,5 +1,5 @@
-using BattleShip.API.Validation;
-using BattleShip.Grpc;
+﻿using BattleShip.API.Validation;
+using BattleShip.Protocol;
 
 namespace BattleShip.Tests.Api;
 

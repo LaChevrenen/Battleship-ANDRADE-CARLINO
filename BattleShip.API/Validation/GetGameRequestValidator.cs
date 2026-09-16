@@ -1,4 +1,4 @@
-using BattleShip.Grpc;
+﻿using BattleShip.Protocol;
 using FluentValidation;
 
 namespace BattleShip.API.Validation;
