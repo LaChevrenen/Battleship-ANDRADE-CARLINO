@@ -45,8 +45,9 @@ L'App appelle l'API à l'adresse indiquée dans `BattleShip.App/wwwroot/appsetti
 
 Pages disponibles :
 
-- `http://localhost:5274/reprise` : lecture de l'état d'une partie par gRPC-Web, à partir de son
-  identifiant.
+- `http://localhost:5274/` : créer une partie.
+- `http://localhost:5274/partie/{identifiant}` : jouer, et reprendre la partie après un
+  rechargement. L'état y est relu par gRPC-Web.
 
 Requêtes HTTP prêtes à l'emploi : `api.http`.
 
