@@ -67,20 +67,18 @@
         : Ships.Any(ship => ship.Contains(cell)) ? "navire"
         : "eau";
 
-    // Bouts de coque : une case sans voisine du même navire dans une direction en ferme le bord.
+    // Coque : une case sans voisine du même navire dans une direction en ferme le bord de ce côté.
     private string HullClass(Coordinate cell)
     {
         var ship = AllShips.FirstOrDefault(ship => ship.Contains(cell));
         if (ship is null)
             return string.Empty;
 
-        var bouts = new List<string>();
-        if (!ship.Contains(cell with { Column = cell.Column - 1 })) bouts.Add("bout-g");
-        if (!ship.Contains(cell with { Column = cell.Column + 1 })) bouts.Add("bout-d");
-        if (!ship.Contains(cell with { Row = cell.Row - 1 })) bouts.Add("bout-h");
-        if (!ship.Contains(cell with { Row = cell.Row + 1 })) bouts.Add("bout-b");
-
-        return string.Join(' ', bouts);
+        return HullShape.Corners(
+            gauche: !ship.Contains(cell with { Column = cell.Column - 1 }),
+            droite: !ship.Contains(cell with { Column = cell.Column + 1 }),
+            haut: !ship.Contains(cell with { Row = cell.Row - 1 }),
+            bas: !ship.Contains(cell with { Row = cell.Row + 1 }));
     }
 
     private string? PreviewClass(Coordinate cell) =>

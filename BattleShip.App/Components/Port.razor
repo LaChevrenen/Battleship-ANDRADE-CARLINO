@@ -37,8 +37,17 @@
     [Parameter] public Orientation Orientation { get; set; } = Orientation.Horizontal;
     [Parameter] public EventCallback<int> OnSelect { get; set; }
 
-    // Mêmes classes de coque que sur la grille : seuls les bouts de la file sont arrondis.
-    private string HullClass(int cell, int length) => Orientation == Orientation.Horizontal
-        ? $"bout-h bout-b {(cell == 0 ? "bout-g" : null)} {(cell == length - 1 ? "bout-d" : null)}"
-        : $"bout-g bout-d {(cell == 0 ? "bout-h" : null)} {(cell == length - 1 ? "bout-b" : null)}";
+    // Même coque que sur la grille : une file droite, ouverte sur ses deux extrémités seulement.
+    private string HullClass(int cell, int length)
+    {
+        var horizontal = Orientation == Orientation.Horizontal;
+        var premier = cell == 0;
+        var dernier = cell == length - 1;
+
+        return HullShape.Corners(
+            gauche: !horizontal || premier,
+            droite: !horizontal || dernier,
+            haut: horizontal || premier,
+            bas: horizontal || dernier);
+    }
 }

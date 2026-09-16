@@ -117,25 +117,33 @@ code {
 .grilles { display: flex; gap: 2rem; flex-wrap: wrap; align-items: flex-start; outline: none; }
 .grille table { border-collapse: collapse; }
 .grille th { width: 2.4rem; height: 2.4rem; font-weight: normal; color: #555; }
-.grille td.case { width: 2.4rem; height: 2.4rem; border: 1px solid #b9c6cf; position: relative; }
+/* Une seule définition de case, partagée par la grille et le port. */
+.case { width: 2.4rem; height: 2.4rem; border: 1px solid #b9c6cf; position: relative; }
 .grille td.cliquable { cursor: pointer; }
-.grille td.cliquable:hover { filter: brightness(0.92); box-shadow: inset 0 0 0 2px #2d6cdf; }
+/* Contour et non ombre intérieure : l'ombre passerait sous le calque de coque. */
+.grille td.cliquable:hover { filter: brightness(0.92); outline: 2px solid #2d6cdf; outline-offset: -2px; }
 
-/* Un état, une couleur : eau, navire intact, raté, touché, coulé */
+/* Un état, une couleur : eau, navire intact, raté, touché, coulé.
+   --coque porte la couleur de la coque, peinte par le calque plus bas. */
 .grille td.eau { background: #e7f2fb; }
-.grille td.navire { background: #8d99a6; border-color: #71808d; }
 .grille td.rate { background: #e7f2fb; }
 .grille td.rate::after { content: ''; position: absolute; inset: 40%; border-radius: 50%; background: #7d98ad; }
-.grille td.touche { background: #f08c00; border-color: #c97a00; }
+.case.navire { --coque: #8d99a6; }
+.case.touche { --coque: #f08c00; }
+.case.coule { --coque: #862e2e; }
 .grille td.touche::after { content: '✕'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #5b3a00; font-weight: bold; }
-.grille td.coule { background: #862e2e; border-color: #5f2020; }
 .grille td.coule::after { content: '✕'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #ffe3e3; font-weight: bold; }
 
-/* Coques : bouts arrondis là où le navire s'arrête */
-.navire.bout-g, .touche.bout-g, .coule.bout-g { border-top-left-radius: 45%; border-bottom-left-radius: 45%; }
-.navire.bout-d, .touche.bout-d, .coule.bout-d { border-top-right-radius: 45%; border-bottom-right-radius: 45%; }
-.navire.bout-h, .touche.bout-h, .coule.bout-h { border-top-left-radius: 45%; border-top-right-radius: 45%; }
-.navire.bout-b, .touche.bout-b, .coule.bout-b { border-bottom-left-radius: 45%; border-bottom-right-radius: 45%; }
+/* Coque : un calque qui déborde d'un pixel sur la bordure, pour que deux cases voisines d'un
+   même navire se touchent sans trait, quelle que soit la façon dont le tableau fusionne ses
+   bordures. Les coins ne sont arrondis qu'aux extrémités (voir HullShape). */
+.case.navire::before, .case.touche::before, .case.coule::before {
+    content: ''; position: absolute; inset: -1px; background: var(--coque);
+}
+.case.coin-hg::before { border-top-left-radius: 45%; }
+.case.coin-hd::before { border-top-right-radius: 45%; }
+.case.coin-bg::before { border-bottom-left-radius: 45%; }
+.case.coin-bd::before { border-bottom-right-radius: 45%; }
 
 /* Aperçu : la couleur vient du serveur, vert si le placement est accepté */
 .grille td.apercu-ok { outline: 3px solid #2f9e44; outline-offset: -3px; }
@@ -152,4 +160,4 @@ code {
 .port button.navire-port.vertical { flex-direction: column; }
 .port button.navire-port:hover { background: #f1f3f5; }
 .port button.navire-port.choisi { border-color: #2d6cdf; background: #eef4ff; }
-.port .case.navire { display: inline-block; width: 2.4rem; height: 2.4rem; background: #8d99a6; border: 1px solid #71808d; }
+.port .case { display: inline-block; }
