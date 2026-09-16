@@ -51,7 +51,7 @@ else
 
     @if (refusal is not null)
     {
-        <p role="alert">Tir refusé : @refusal</p>
+        <p role="alert">Refusé : @refusal</p>
     }
 
     <div class="grilles">
@@ -121,14 +121,27 @@ else
 
     private async Task Start()
     {
+        if (busy)
+            return;
+
         busy = true;
         refusal = null;
 
-        var turn = await Api.StartAsync(Guid.Parse(Id));
-        state = turn.State;
-        message = turn.ComputerShots.Count == 0
-            ? "À toi de jouer."
-            : $"L'ordinateur a commencé : {Describe(turn.ComputerShots)}";
+        var result = await Api.StartAsync(Guid.Parse(Id));
+        if (result.Turn is { } turn)
+        {
+            state = turn.State;
+            message = turn.ComputerShots.Count == 0
+                ? "À toi de jouer."
+                : $"L'ordinateur a commencé : {Describe(turn.ComputerShots)}";
+        }
+        else
+        {
+            // Cas courant : un second clic sur « Commencer » pendant que le premier appel est en vol.
+            refusal = result.Refusal;
+            if (result.MustReload)
+                await LoadState();
+        }
 
         busy = false;
     }

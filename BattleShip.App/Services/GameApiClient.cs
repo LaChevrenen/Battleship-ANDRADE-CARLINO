@@ -21,24 +21,24 @@ public sealed class GameApiClient(HttpClient http)
         return (await response.Content.ReadFromJsonAsync<GameStateDto>(Json))!;
     }
 
-    public async Task<TurnDto> StartAsync(Guid id)
-    {
-        var response = await http.PostAsync($"/games/{id}/start", null);
-        response.EnsureSuccessStatusCode();
-        return (await response.Content.ReadFromJsonAsync<TurnDto>(Json))!;
-    }
+    public async Task<TurnResult> StartAsync(Guid id) =>
+        await ReadTurn(await http.PostAsync($"/games/{id}/start", null));
 
-    public async Task<FireResult> FireAsync(Guid id, int column, int row, int expectedVersion)
+    public async Task<TurnResult> FireAsync(Guid id, int column, int row, int expectedVersion) =>
+        await ReadTurn(await http.PostAsJsonAsync($"/games/{id}/shots", new FireRequest(column, row, expectedVersion), Json));
+
+    private static async Task<TurnResult> ReadTurn(HttpResponseMessage response)
     {
-        var response = await http.PostAsJsonAsync($"/games/{id}/shots", new FireRequest(column, row, expectedVersion), Json);
         if (response.IsSuccessStatusCode)
-            return new FireResult((await response.Content.ReadFromJsonAsync<TurnDto>(Json))!, null, MustReload: false);
+            return new TurnResult((await response.Content.ReadFromJsonAsync<TurnDto>(Json))!, null, MustReload: false);
 
         // Refus du serveur : on n'affiche que ce qu'il dit, sans rien deviner de l'état de la partie.
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
         var rejection = problem.TryGetProperty("rejection", out var code) ? code.GetString() : null;
         var title = problem.TryGetProperty("title", out var text) ? text.GetString() : response.StatusCode.ToString();
 
-        return new FireResult(null, title, MustReload: rejection == "StaleVersion" || response.StatusCode == HttpStatusCode.NotFound);
+        // Ces refus disent que l'état affiché n'est plus celui du serveur : il faut le relire avant de rejouer.
+        var mustReload = rejection is "StaleVersion" or "AlreadyStarted" || response.StatusCode == HttpStatusCode.NotFound;
+        return new TurnResult(null, title, mustReload);
     }
 }
