@@ -15,28 +15,41 @@
 @if (error is not null)
 {
     <p role="alert">@error</p>
-    <button @onclick="NewGame">Nouvelle partie</button>
+    <button class="new-game-button new-game-button-secondary" @onclick="NewGame">
+        <span class="new-game-icon" aria-hidden="true">+</span>
+        <span>Nouvelle partie</span>
+    </button>
 }
 else if (state is null)
 {
-    <p>Chargement…</p>
+    <div class="app-loading game-loading" role="status">
+        <span class="loading-orbit" aria-hidden="true"></span>
+        <p>Chargement de la partie…</p>
+    </div>
 }
 else
 {
     @if (state.Phase == GamePhase.Finished)
     {
-        <h2>@(state.Winner == Side.Player ? "Tu as gagné." : "L'ordinateur a gagné.")</h2>
-        <button @onclick="NewGame">Nouvelle partie</button>
+        <div class="outcome-card @(state.Winner == Side.Player ? "outcome-win" : "outcome-loss")">
+            <span class="outcome-mark" aria-hidden="true">@(state.Winner == Side.Player ? "✓" : "×")</span>
+            <h2>@(state.Winner == Side.Player ? "Tu as gagné." : "L'ordinateur a gagné.")</h2>
+            <p>@(state.Winner == Side.Player ? "La flotte adverse est vaincue." : "Ta flotte a été entièrement touchée.")</p>
+        </div>
+        <button class="new-game-button new-game-button-secondary" @onclick="NewGame">
+            <span class="new-game-icon" aria-hidden="true">+</span>
+            <span>Nouvelle partie</span>
+        </button>
     }
     else
     {
-        <p>
-            Phase : @state.Phase
-            @if (state.CurrentTurn is not null)
-            {
-                <text> — tour : @state.CurrentTurn</text>
-            }
-        </p>
+        <div class="turn-banner @(state.CurrentTurn == Side.Player ? "turn-player" : "turn-computer")">
+            <span class="turn-dot" aria-hidden="true"></span>
+            <div>
+                <p class="turn-label">@(state.CurrentTurn == Side.Player ? "À ton tour" : "L'ordinateur joue")</p>
+                <p class="turn-detail">Phase : @state.Phase</p>
+            </div>
+        </div>
 
         @if (state.Phase == GamePhase.Setup)
         {
@@ -252,7 +265,11 @@ else
 
         if (selectedPlacedShip is { } selectedShip)
         {
-            preview = PreviewCellsForShip(origin, selectedShip.Count, ResolveOrientation(selectedShip));
+            var nextPreview = PreviewCellsForShip(origin, selectedShip.Count, ResolveOrientation(selectedShip));
+            if (preview.SequenceEqual(nextPreview) && previewValid)
+                return;
+
+            preview = nextPreview;
             previewValid = true;
             return;
         }
@@ -263,8 +280,13 @@ else
             return;
         }
 
-        preview = PreviewCellsForSelectedShip(origin, length);
-        previewValid = validOrigins.Contains(origin);
+        var portPreview = PreviewCellsForSelectedShip(origin, length);
+        var nextPreviewValid = validOrigins.Contains(origin);
+        if (preview.SequenceEqual(portPreview) && previewValid == nextPreviewValid)
+            return;
+
+        preview = portPreview;
+        previewValid = nextPreviewValid;
     }
 
     private void ClearHover()

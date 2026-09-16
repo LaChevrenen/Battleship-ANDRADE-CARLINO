@@ -7,51 +7,81 @@
 
 <PageTitle>Bataille navale</PageTitle>
 
-<h1>Bataille navale</h1>
+<div class="home-heading">
+    <p class="home-kicker">Centre de commandement</p>
+    <h1>Bataille navale</h1>
+    <p>Une partie contre l'ordinateur, sur une grille de 10 × 10. Les flottes sont placées par le serveur.</p>
+</div>
 
-<p>Une partie contre l'ordinateur, sur une grille de 10 × 10. Les flottes sont placées par le serveur.</p>
-
-<button @onclick="NewGame" disabled="@creating">Nouvelle partie</button>
+<button class="new-game-button home-new-game" @onclick="NewGame" disabled="@creating">
+    <span class="new-game-icon" aria-hidden="true">+</span>
+    <span>@(creating ? "Création en cours..." : "Nouvelle partie")</span>
+</button>
 
 @if (loading)
 {
-    <p>Chargement des parties…</p>
+    <div class="app-loading" role="status">
+        <span class="loading-orbit" aria-hidden="true"></span>
+        <p>Chargement des parties…</p>
+    </div>
 }
 else if (games.Any())
 {
-    <section>
-        <h2>Parties en cours</h2>
+    <section class="game-history-section">
+        <div class="section-heading">
+            <div>
+                <p class="section-kicker">Continuer</p>
+                <h2>Parties en cours</h2>
+            </div>
+            <span class="section-count">@ActiveGames.Count()</span>
+        </div>
         @if (!ActiveGames.Any())
         {
-            <p>Aucune partie en cours.</p>
+            <p class="empty-history">Aucune partie en cours.</p>
         }
         else
         {
-            @foreach (var game in ActiveGames)
-            {
-                <p>
-                    <span>@game.CreatedAt.LocalDateTime.ToString("g") — @game.Phase</span>
-                    <a href="@($"/partie/{game.Id}")">Reprendre</a>
-                </p>
-            }
+            <div class="game-list">
+                @foreach (var game in ActiveGames)
+                {
+                    <div class="game-row">
+                        <div class="game-info">
+                            <span class="game-status status-active">En cours</span>
+                            <span class="game-date">@game.CreatedAt.LocalDateTime.ToString("g")</span>
+                        </div>
+                        <a class="game-action" href="@($"/partie/{game.Id}")">Reprendre <span aria-hidden="true">→</span></a>
+                    </div>
+                }
+            </div>
         }
     </section>
 
-    <section>
-        <h2>Historique</h2>
+    <section class="game-history-section">
+        <div class="section-heading">
+            <div>
+                <p class="section-kicker">Archives</p>
+                <h2>Historique</h2>
+            </div>
+            <span class="section-count">@FinishedGames.Count()</span>
+        </div>
         @if (!FinishedGames.Any())
         {
-            <p>Aucune partie terminée.</p>
+            <p class="empty-history">Aucune partie terminée.</p>
         }
         else
         {
-            @foreach (var game in FinishedGames)
-            {
-                <p>
-                    <span>@game.CreatedAt.LocalDateTime.ToString("g") — @(game.Winner == Side.Player ? "Victoire" : "Défaite")</span>
-                    <a href="@($"/partie/{game.Id}")">Voir</a>
-                </p>
-            }
+            <div class="game-list">
+                @foreach (var game in FinishedGames)
+                {
+                    <div class="game-row">
+                        <div class="game-info">
+                            <span class="game-status @(game.Winner == Side.Player ? "status-win" : "status-loss")">@(game.Winner == Side.Player ? "Victoire" : "Défaite")</span>
+                            <span class="game-date">@game.CreatedAt.LocalDateTime.ToString("g")</span>
+                        </div>
+                        <a class="game-action" href="@($"/partie/{game.Id}")">Voir <span aria-hidden="true">→</span></a>
+                    </div>
+                }
+            </div>
         }
     </section>
 }

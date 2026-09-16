@@ -4,7 +4,7 @@
    à quelle grille il correspond. C'est la page qui décide ce qu'elle lui passe, y compris si
    l'aperçu est valide — cette validité vient du serveur. *@
 
-<div class="grille @RootCssClass" @onmouseleave="@(() => OnLeave.InvokeAsync())" @onwheel="@((wheel) => OnWheel.InvokeAsync(wheel))" @onwheel:preventDefault>
+<div class="grille @RootCssClass" @onmouseleave="@(() => OnLeave.InvokeAsync())" @onwheel="@((wheel) => OnWheel.InvokeAsync(wheel))" @onwheel:preventDefault @onselectstart:preventDefault @ondragstart:preventDefault>
     <div class="grille-header">
         <h2>@Title</h2>
     </div>
@@ -29,7 +29,9 @@
                         var cell = new Coordinate(column, currentRow);
                         <td class="case @CssClass(cell) @HullClass(cell) @PreviewClass(cell) @(OnCellClick.HasDelegate ? "cliquable" : null)"
                             @onclick="@(() => OnCellClick.InvokeAsync(cell))"
-                            @onmouseover="@(() => OnCellHover.InvokeAsync(cell))"></td>
+                            @onmouseenter="@(() => OnCellHover.InvokeAsync(cell))"
+                            @onselectstart:preventDefault
+                            @ondragstart:preventDefault></td>
                     }
                 </tr>
             }
