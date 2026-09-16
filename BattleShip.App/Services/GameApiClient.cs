@@ -24,6 +24,9 @@ public sealed class GameApiClient(HttpClient http)
         return new CreationResult((await response.Content.ReadFromJsonAsync<GameStateDto>(Json))!, null);
     }
 
+    public Task<IReadOnlyList<GameSummaryDto>> ListAsync() =>
+        http.GetFromJsonAsync<IReadOnlyList<GameSummaryDto>>("/games", Json)!;
+
     public async Task<PreparationResult> PlaceShipAsync(Guid id, Coordinate origin, int length, Orientation orientation, int expectedVersion) =>
         await ReadState(await http.PostAsJsonAsync(
             $"/games/{id}/ships",

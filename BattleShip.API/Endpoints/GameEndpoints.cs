@@ -14,6 +14,7 @@ public static class GameEndpoints
     {
         var games = app.MapGroup("/games");
         games.MapPost("/", Create);
+        games.MapGet("/", List);
         games.MapGet("/{id:guid}", GetState);
         games.MapGet("/{id:guid}/placements", ValidOrigins);
         games.MapPost("/{id:guid}/ships", PlaceShip);
@@ -32,6 +33,9 @@ public static class GameEndpoints
         var state = store.Add(Game.CreateWithRandomComputerFleet(random), GameDtoMapper.ToStateDto);
         return TypedResults.Created($"/games/{state.Id}", state);
     }
+
+    private static Ok<IReadOnlyList<GameSummaryDto>> List(GameStore store) =>
+        TypedResults.Ok(store.ListSummaries());
 
     private static Results<Ok<GameStateDto>, NotFound> GetState(Guid id, GameStore store) =>
         store.TryExecute(id, GameDtoMapper.ToStateDto, out var state)

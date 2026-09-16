@@ -4,6 +4,9 @@
 # @name create
 POST {{api}}/games
 
+### Lister les parties en mémoire : 200, parties en cours et parties terminées
+GET {{api}}/games
+
 ### Lire l'état d'une partie (reprise après rechargement) : 200
 GET {{api}}/games/{{create.response.body.$.id}}
 

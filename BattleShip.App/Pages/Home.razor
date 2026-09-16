@@ -1,5 +1,7 @@
 @page "/"
 @using BattleShip.App.Services
+@using BattleShip.Models
+@using BattleShip.Models.Dtos
 @inject GameApiClient Api
 @inject NavigationManager Navigation
 
@@ -11,6 +13,49 @@
 
 <button @onclick="NewGame" disabled="@creating">Nouvelle partie</button>
 
+@if (loading)
+{
+    <p>Chargement des parties…</p>
+}
+else if (games.Any())
+{
+    <section>
+        <h2>Parties en cours</h2>
+        @if (!ActiveGames.Any())
+        {
+            <p>Aucune partie en cours.</p>
+        }
+        else
+        {
+            @foreach (var game in ActiveGames)
+            {
+                <p>
+                    <span>@game.CreatedAt.LocalDateTime.ToString("g") — @game.Phase</span>
+                    <a href="@($"/partie/{game.Id}")">Reprendre</a>
+                </p>
+            }
+        }
+    </section>
+
+    <section>
+        <h2>Historique</h2>
+        @if (!FinishedGames.Any())
+        {
+            <p>Aucune partie terminée.</p>
+        }
+        else
+        {
+            @foreach (var game in FinishedGames)
+            {
+                <p>
+                    <span>@game.CreatedAt.LocalDateTime.ToString("g") — @(game.Winner == Side.Player ? "Victoire" : "Défaite")</span>
+                    <a href="@($"/partie/{game.Id}")">Voir</a>
+                </p>
+            }
+        }
+    </section>
+}
+
 @if (error is not null)
 {
     <p role="alert">@error</p>
@@ -18,7 +63,28 @@
 
 @code {
     private bool creating;
+    private bool loading = true;
     private string? error;
+    private IReadOnlyList<GameSummaryDto> games = [];
+
+    private IEnumerable<GameSummaryDto> ActiveGames => games.Where(game => game.Phase != GamePhase.Finished);
+    private IEnumerable<GameSummaryDto> FinishedGames => games.Where(game => game.Phase == GamePhase.Finished);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            games = await Api.ListAsync();
+        }
+        catch (HttpRequestException exception)
+        {
+            error = $"Le serveur ne répond pas : {exception.Message}";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
 
     private async Task NewGame()
     {

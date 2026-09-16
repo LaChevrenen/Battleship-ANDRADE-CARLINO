@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using BattleShip.API.Engine;
+using BattleShip.Models.Dtos;
 
 namespace BattleShip.API.Storage;
 
@@ -33,6 +34,24 @@ public sealed class GameStore
             result = operation(entry.Game);
             return true;
         }
+    }
+
+    public IReadOnlyList<GameSummaryDto> ListSummaries()
+    {
+        return [..
+            games.Values
+                .Select(entry =>
+                {
+                    lock (entry.Gate)
+                    {
+                        return new GameSummaryDto(
+                            entry.Game.Id,
+                            entry.Game.CreatedAt,
+                            entry.Game.Game.Phase,
+                            entry.Game.Game.Winner);
+                    }
+                })
+                .OrderByDescending(summary => summary.CreatedAt)];
     }
 
     private sealed record Entry(StoredGame Game, Lock Gate);

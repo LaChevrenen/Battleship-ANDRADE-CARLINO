@@ -72,6 +72,18 @@ public sealed class GameEndpointsTests : IClassFixture<WebApplicationFactory<Pro
     }
 
     [Fact]
+    public async Task Une_partie_creee_apparait_dans_l_historique_et_reste_reprenable()
+    {
+        var created = await CreateGame();
+
+        var summaries = await client.GetFromJsonAsync<IReadOnlyList<GameSummaryDto>>("/games", Json);
+
+        var summary = summaries!.Single(game => game.Id == created.Id);
+        Assert.Equal(GamePhase.Setup, summary.Phase);
+        Assert.Null(summary.Winner);
+    }
+
+    [Fact]
     public async Task Les_enums_circulent_en_chaines()
     {
         var state = await CreateStartedGame();

@@ -8,6 +8,7 @@ namespace BattleShip.API.Storage;
 public sealed class StoredGame(Guid id, Game game)
 {
     public Guid Id { get; } = id;
+    public DateTimeOffset CreatedAt { get; } = DateTimeOffset.UtcNow;
     public Game Game { get; } = game;
     public int Version { get; private set; }
 
