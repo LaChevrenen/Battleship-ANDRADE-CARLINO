@@ -61,6 +61,13 @@ else
         <p role="alert">Refusé : @refusal</p>
     }
 
+    @* Un refus vient du serveur, une absence de réponse veut dire qu'il n'a rien dit : deux
+       messages distincts, parce que l'un se corrige en jouant autrement et l'autre non. *@
+    @if (unreachable is not null)
+    {
+        <p role="alert">@unreachable</p>
+    }
+
     @* tabindex : sans focus, l'élément ne reçoit pas les touches. preventDefault évite que la molette fasse défiler la page. *@
     <div class="grilles" tabindex="0" @ref="board" @onkeydown="OnKeyDown" @onwheel="OnWheel" @onwheel:preventDefault>
         @if (state.Phase == GamePhase.Setup)
@@ -100,6 +107,7 @@ else
     private GameStateDto? state;
     private string? message;
     private string? refusal;
+    private string? unreachable;
     private string? error;
     private bool busy;
     private int? selectedLength;
@@ -210,7 +218,13 @@ else
             return;
         }
 
-        var result = await Api.ValidOriginsAsync(Guid.Parse(Id), length, orientation);
+        var result = await Answered(() => Api.ValidOriginsAsync(Guid.Parse(Id), length, orientation));
+        if (result is null)
+        {
+            validOrigins = [];
+            return;
+        }
+
         validOrigins = result.Origins;
 
         // Sans origines, colorer l'aperçu en rouge serait un mensonge : on lâche la sélection,
@@ -249,7 +263,13 @@ else
         busy = true;
         refusal = null;
 
-        var result = await command(state.Version);
+        var result = await Answered(() => command(state.Version));
+        if (result is null)
+        {
+            busy = false;
+            return;
+        }
+
         if (result.State is { } updated)
         {
             state = updated;
@@ -279,7 +299,13 @@ else
         busy = true;
         refusal = null;
 
-        var result = await Api.StartAsync(Guid.Parse(Id));
+        var result = await Answered(() => Api.StartAsync(Guid.Parse(Id)));
+        if (result is null)
+        {
+            busy = false;
+            return;
+        }
+
         if (result.Turn is { } turn)
         {
             state = turn.State;
@@ -306,7 +332,12 @@ else
         busy = true;
         refusal = null;
 
-        var result = await Api.FireAsync(Guid.Parse(Id), target.Column, target.Row, state.Version);
+        var result = await Answered(() => Api.FireAsync(Guid.Parse(Id), target.Column, target.Row, state.Version));
+        if (result is null)
+        {
+            busy = false;
+            return;
+        }
 
         // Rien n'est affiché avant la réponse : sur un refus, l'état montré reste exactement celui du serveur.
         if (result.Turn is { } turn)
@@ -326,7 +357,10 @@ else
 
     private async Task NewGame()
     {
-        var result = await Api.CreateAsync();
+        var result = await Answered(Api.CreateAsync);
+        if (result is null)
+            return;
+
         if (result.Game is { } game)
         {
             Navigation.NavigateTo($"/partie/{game.Id}");
@@ -334,6 +368,22 @@ else
         }
 
         error = result.Refusal;
+    }
+
+    // Le serveur n'a pas répondu du tout : il n'y a aucun résultat à lire, et ce n'est pas un refus.
+    private async Task<T?> Answered<T>(Func<Task<T>> call) where T : class
+    {
+        try
+        {
+            var result = await call();
+            unreachable = null;
+            return result;
+        }
+        catch (HttpRequestException failure)
+        {
+            unreachable = $"Le serveur ne répond pas : {failure.Message}";
+            return null;
+        }
     }
 
     private static string Describe(TurnDto turn)

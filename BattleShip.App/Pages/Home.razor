@@ -39,7 +39,7 @@
         catch (HttpRequestException exception)
         {
             // Réponse d'erreur : lue par CreateAsync. Ici, c'est l'absence de réponse — API arrêtée.
-            error = $"L'API n'a pas répondu : {exception.Message}";
+            error = $"Le serveur ne répond pas : {exception.Message}";
         }
 
         creating = false;
