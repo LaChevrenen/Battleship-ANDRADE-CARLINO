@@ -1,7 +1,9 @@
 using System.Text.Json.Serialization;
 using BattleShip.API.Endpoints;
+using BattleShip.API.GrpcServices;
 using BattleShip.API.Storage;
 using BattleShip.API.Validation;
+using BattleShip.Grpc;
 using BattleShip.Models.Dtos;
 using FluentValidation;
 
@@ -15,6 +17,8 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddSingleton<GameStore>();
 builder.Services.AddSingleton(Random.Shared);
 builder.Services.AddSingleton<IValidator<FireRequest>, FireRequestValidator>();
+builder.Services.AddGrpc();
+builder.Services.AddSingleton<IValidator<GetGameRequest>, GetGameRequestValidator>();
 
 var app = builder.Build();
 
@@ -24,7 +28,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseGrpcWeb();
 app.MapGameEndpoints();
+// Le navigateur ne parle pas gRPC natif : le service n'est joignable depuis l'App qu'en gRPC-Web.
+app.MapGrpcService<GameGrpcService>().EnableGrpcWeb();
 
 app.Run();
 

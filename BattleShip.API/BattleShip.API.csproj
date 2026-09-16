@@ -18,7 +18,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="..\Protos\battleship.proto" GrpcServices="Server" Link="Protos\battleship.proto" />
+    <!-- Both et non Server : les tests réutilisent ce client ; le générer une seconde fois dans les tests
+         dupliquerait chaque type de BattleShip.Grpc (CS0436, CS1503). -->
+    <Protobuf Include="..\Protos\battleship.proto" GrpcServices="Both" Link="Protos\battleship.proto" />
   </ItemGroup>
 
 </Project>
