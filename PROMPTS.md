@@ -975,5 +975,136 @@
   - des navires coulés déduits côté client au lieu d'être annoncés par le serveur.
 - Preuves reproductibles et limites :
   - Commits : `6d7a024` (origines valides et retrait par case), `5772e6e` (aperçu coloré et port),
-    `26ea545` (rotation clavier et molette, habillage des grilles).
+  `26ea545` (rotation clavier et molette, habillage des grilles).
   - Limites :
+
+## 2026-09-16 — Phase 1 des extensions : retours visuels de tir
+
+- Outil / modèle si connu : GitHub Copilot dans VS Code ; exploration ciblée, implémentation et
+  compilation du projet Blazor.
+- Contexte : la page de partie distinguait déjà les résultats du moteur, mais le retour visuel
+  devait être enrichi sans déplacer de règle métier côté client.
+- Prompt réellement utilisé : demande d'intégrer les animations de cases, les messages « Touché »,
+  « Coulé » et « Raté », le nombre de navires restants et le verrouillage visuel pendant le tour
+  de l'ordinateur.
+- Réponse et hypothèses résumées : le moteur fournit déjà `Miss`, `Hit` et `Sunk`. La grille reçoit
+  maintenant la cellule et le résultat à animer. Les navires restants sont calculés depuis l'état
+  révélé ; aucune position adverse non découverte n'est ajoutée au DTO.
+- Décision et justification :
+- Scénario ou commande de vérification :
+  - `dotnet build "BattleShip.App/BattleShip.App.csproj" -v minimal`.
+- Résultat attendu, puis résultat observé :
+  - Attendu : compilation du projet Blazor sans erreur.
+  - Observé : `BattleShip.Models` et `BattleShip.App` compilés ; génération réussie en 3,2 s.
+- Erreur que ce contrôle pourrait détecter : une erreur Razor ou C# dans le branchement des
+  paramètres d'animation, du compteur ou du verrouillage visuel.
+- Preuves reproductibles et limites :
+  - Fichiers touchés : `BattleShip.App/Pages/Partie.razor`,
+    `BattleShip.App/Components/Grid.razor`, `BattleShip.App/wwwroot/css/app.css`.
+  - Aucun test automatisé de rendu Blazor n'a été exécuté.
+  - Limites :
+
+## 2026-09-16 — Phase 2 des extensions : niveaux d'IA
+
+- Outil / modèle si connu : GitHub Copilot dans VS Code ; cadrage, implémentation par étapes,
+  tests ciblés et compilations dans une sortie temporaire.
+- Contexte : `HuntTargetStrategy` était la seule stratégie côté serveur. Le niveau devait être
+  choisi avant la création, conservé dans `Game` et appliqué par l'API sans exposer la flotte
+  adverse.
+- Prompt réellement utilisé : demande de prendre la meilleure option parmi l'enum avec stratégies
+  côté serveur et l'interface de stratégies, puis demande d'implémenter trois niveaux.
+- Réponse et hypothèses résumées : l'option enum a été retenue. `Easy` choisit aléatoirement,
+  `Normal` conserve la chasse-cible existante, et `Hard` calcule les placements compatibles avec
+  les tirs révélés puis privilégie les cases les plus fréquentes.
+- Décision et justification :
+- Scénario ou commande de vérification :
+  - `dotnet build "BattleShip.API/BattleShip.API.csproj" -v minimal -p:BaseOutputPath="obj\ai-validation\"`.
+  - `dotnet build "BattleShip.App/BattleShip.App.csproj" -v minimal -p:BaseOutputPath="obj\ai-validation\"`.
+  - `dotnet test "BattleShip.Tests/BattleShip.Tests.csproj" --no-restore --filter "FullyQualifiedName~HuntTargetStrategyTests" -v minimal -p:BaseOutputPath="obj\ai-tests-validation\"`.
+  - Suite complète : `dotnet test "BattleShip.Tests/BattleShip.Tests.csproj" --no-restore -v quiet -p:BaseOutputPath="obj\ai-tests-validation\"`.
+- Résultat attendu, puis résultat observé :
+  - Les compilations API et App ont réussi ; les tests IA ciblés ont réussi `62/62`.
+  - La suite complète ne présente plus que l'échec indépendant
+    `FleetPlacementTests.Reprendre_un_navire_pose_avec_une_nouvelle_position_invalide_est_refuse_sans_rien_changer`.
+    Elle attend `AdjacentShip` et observe `Overlap`.
+- Erreur que ce contrôle pourrait détecter : une stratégie qui tire une case déjà jouée, qui
+  consulte la flotte cachée ou qui n'est pas réellement branchée au niveau demandé.
+- Preuves reproductibles et limites :
+  - Fichiers touchés : `BattleShip.Models/AiDifficulty.cs`,
+    `BattleShip.API/Engine/RandomTargetStrategy.cs`,
+    `BattleShip.API/Engine/ProbabilityTargetStrategy.cs`, `BattleShip.API/Engine/Game.cs`,
+    `BattleShip.API/Endpoints/GameEndpoints.cs`, `BattleShip.App/Services/GameApiClient.cs`,
+    `BattleShip.App/Pages/Home.razor`, `BattleShip.App/Pages/Partie.razor`,
+    `BattleShip.App/wwwroot/css/app.css`, et les tests associés.
+  - Limites : l'échec de placement n'a pas été modifié car il est hors du périmètre de cette phase.
+
+## 2026-09-16 — Phase 3 des extensions : statistiques de partie
+
+- Outil / modèle si connu : GitHub Copilot dans VS Code ; exploration, implémentation et
+  compilations ciblées.
+- Contexte : le serveur exposait déjà le nombre de tirs et la durée dans les résumés, mais pas
+  les tirs réussis, ratés, la précision ni l'historique dans l'écran de jeu.
+- Prompt réellement utilisé : demande de poursuivre avec les statistiques de partie : tirs totaux,
+  réussis, ratés, précision, durée, historique et résumé pendant/après la partie.
+- Réponse et hypothèses résumées : les statistiques sont calculées côté serveur à partir des tirs
+  acceptés du joueur, ajoutées à `GameStateDto` et transportées par gRPC-Web. L'historique ne porte
+  que sur les cibles et résultats déjà connus du joueur.
+- Décision et justification :
+- Scénario ou commande de vérification :
+  - `dotnet build "BattleShip.API/BattleShip.API.csproj" -v minimal -p:BaseOutputPath="obj\stats-validation\"`.
+  - `dotnet build "BattleShip.App/BattleShip.App.csproj" -v minimal -p:BaseOutputPath="obj\stats-validation\"`.
+- Résultat attendu, puis résultat observé : les deux compilations ont réussi ; l'API et le front
+  ont généré leurs sorties sans erreur.
+- Erreur que ce contrôle pourrait détecter : un contrat gRPC incomplet, un compteur modifié après
+  un tir refusé ou une information non autorisée ajoutée à l'historique.
+- Preuves reproductibles et limites : fichiers touchés : DTO statistiques, `StoredGame`, mapper
+  HTTP/gRPC, proto, convertisseur Blazor, `Partie.razor` et `app.css`. Aucun test automatisé de
+  statistiques n'a encore été ajouté.
+
+## 2026-09-16 — Phases 4 et 5 des extensions : préparation et identité visuelle
+
+- Outil / modèle si connu : GitHub Copilot dans VS Code ; implémentation progressive et
+  compilations ciblées.
+- Contexte : la préparation permettait déjà le placement manuel et aléatoire, mais pas la remise
+  à zéro complète ; l'écran devait aussi rendre le début de partie, les tirs coulés et les sons
+  plus perceptibles.
+- Prompt réellement utilisé : demande de poursuivre avec réinitialisation, placement aléatoire
+  relançable, indication de flotte complète, animations, sons optionnels et écran final enrichi.
+- Réponse et hypothèses résumées : la réinitialisation est une commande serveur versionnée et
+  reste impossible après le démarrage. Les sons utilisent Web Audio côté navigateur et peuvent
+  être désactivés ; les règles restent côté serveur.
+- Décision et justification :
+- Scénario ou commande de vérification :
+  - `dotnet build "BattleShip.API/BattleShip.API.csproj" -v minimal -p:BaseOutputPath="obj\fleet-validation\"`.
+  - `dotnet build "BattleShip.App/BattleShip.App.csproj" -v minimal -p:BaseOutputPath="obj\fleet-validation\"`.
+  - `dotnet build "BattleShip.App/BattleShip.App.csproj" -v minimal -p:BaseOutputPath="obj\identity-validation\"`.
+- Résultat attendu, puis résultat observé : les compilations API et App ont réussi sans erreur.
+- Erreur que ce contrôle pourrait détecter : une réinitialisation possible après le démarrage,
+  une route non versionnée, une erreur Razor ou un appel JavaScript absent.
+- Preuves reproductibles et limites : fichiers touchés : moteur et stockage de préparation,
+  endpoint/client reset, `Partie.razor`, `index.html` et `app.css`. La procédure navigateur et
+  les sons n'ont pas encore été vérifiés manuellement.
+
+## 2026-09-16 — Ajustements ergonomiques et audio
+
+- Outil / modèle si connu : GitHub Copilot dans VS Code ; corrections ciblées et compilations
+  du front.
+- Contexte : plusieurs retours manuels concernaient la rotation des bateaux, la hiérarchie des
+  actions de préparation et l'intégration des contrôles audio.
+- Prompt réellement utilisé : demandes de correction du pivot de rotation, de mise en avant du
+  bouton `Commencer`, d'intégration des contrôles `Sons`/`Musique`, puis d'enrichissement de la
+  musique et des effets.
+- Réponse et hypothèses résumées : la rotation utilise désormais la case cliquée comme pivot
+  côté client et serveur. `Commencer` est l'action principale et reste désactivé jusqu'à ce que
+  la flotte soit complète. Les contrôles audio sont regroupés dans un panneau cohérent ; la
+  musique est synthétisée côté navigateur pour éviter une ressource externe.
+- Décision et justification :
+- Scénario ou commande de vérification :
+  - `dotnet build "BattleShip.App/BattleShip.App.csproj" -v minimal -p:BaseOutputPath="obj\pivot-validation\"`.
+  - `dotnet build "BattleShip.App/BattleShip.App.csproj" -v minimal -p:BaseOutputPath="obj\audio-layout-validation\"`.
+- Résultat attendu, puis résultat observé : les compilations du front ont réussi sans erreur.
+- Erreur que ce contrôle pourrait détecter : une erreur Razor dans les contrôles, l'interop audio
+  ou le nouveau chemin de rotation.
+- Preuves reproductibles et limites : la vérification audio et le rendu exact de la rotation ont
+  été compilés mais pas automatisés dans un navigateur. Les tests de rotation ont été adaptés au
+  nouveau contrat de pivot ; un test indépendant de placement conserve un écart `Overlap`/`AdjacentShip`.

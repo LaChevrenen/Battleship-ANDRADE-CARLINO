@@ -103,3 +103,142 @@ Le build a réussi et le test
 La commande exécutée est :
 `dotnet test BattleShip.Tests/BattleShip.Tests.csproj --no-restore --filter "FullyQualifiedName~Une_partie_creee_apparait_dans_l_historique" -v minimal`.
 L'implémentation est en mémoire ; un redémarrage de l'API efface l'historique.
+
+
+## Revue 5 — retours visuels après un tir
+
+**Proposition examinée**
+Ajouter dans l'écran de partie une animation courte de la case jouée, les messages distincts
+`Raté`, `Touché` et `Coulé`, le nombre de navires restants et un verrouillage visuel de la grille
+adverse pendant le tour de l'ordinateur.
+
+**Hypothèse**
+Ces améliorations peuvent rester côté Blazor : le moteur et le serveur continuent de fournir les
+résultats et l'état autorisés, sans décision de règle dans le composant de grille.
+
+**Expérience**
+Compilation ciblée du projet front après modification de `Partie.razor`, `Grid.razor` et `app.css`.
+
+**Résultat attendu avant exécution**
+Le projet Blazor devait compiler sans erreur Razor ou C#.
+
+**Résultat observé**
+Commande exécutée : `dotnet build "BattleShip.App/BattleShip.App.csproj" -v minimal`.
+`BattleShip.Models` et `BattleShip.App` ont été compilés ; génération réussie en 3,2 s.
+
+**Décision et justification**
+
+**Preuves et limites**
+La compilation ne vérifie pas le rendu visuel dans un navigateur et aucun test automatisé de rendu
+Blazor n'a été exécuté.
+
+
+## Revue 6 — niveaux de difficulté de l'ordinateur
+
+**Proposition examinée**
+Ajouter trois niveaux d'IA appliqués côté serveur : aléatoire, chasse-cible et probabiliste.
+
+**Hypothèse**
+Le mode difficile peut choisir ses cibles à partir de `RevealedBoard` uniquement, en évaluant les
+placements encore compatibles avec les tirs connus, sans lire les navires cachés.
+
+**Expérience**
+Compilation séparée de l'API et de l'App, puis exécution des tests ciblés des stratégies et de la
+sélection de navire.
+
+**Résultat attendu avant exécution**
+Les stratégies devaient compiler ; le mode facile ne devait jamais rejouer une case et le mode
+difficile devait privilégier une case compatible avec une touche connue.
+
+**Résultat observé**
+Les compilations API et App ont réussi dans `obj\\ai-validation`. Les tests ciblés ont réussi
+`62/62`. Une première version du test probabiliste a échoué, puis a révélé que les placements
+contenant une touche connue étaient exclus ; la correction a fait repasser les tests.
+
+**Décision et justification**
+
+**Preuves et limites**
+La suite complète laisse un échec indépendant dans `FleetPlacementTests` : `AdjacentShip` attendu,
+`Overlap` observé. Aucun changement n'a été fait sur ce test ou sur le placement pendant cette phase.
+
+
+## Revue 7 — statistiques et historique des tirs
+
+**Proposition examinée**
+Ajouter les statistiques de partie et un historique des tirs acceptés dans l'état serveur, puis
+les afficher pendant la partie et sur l'écran final.
+
+**Hypothèse**
+Les statistiques calculées depuis le journal serveur restent cohérentes après rechargement et ne
+révèlent aucune case adverse non découverte.
+
+**Expérience**
+Compilation séparée de l'API et de l'App après ajout du contrat DTO, du message gRPC-Web et de
+l'affichage Blazor.
+
+**Résultat attendu avant exécution**
+Le contrat et l'affichage devaient compiler sans erreur.
+
+**Résultat observé**
+API compilée avec succès ; App Blazor compilée avec succès en 3,4 s dans la sortie temporaire
+`obj\\stats-validation`.
+
+**Décision et justification**
+
+**Preuves et limites**
+La vérification exécutée est une compilation ; aucun test automatisé n'a encore exercé le calcul
+de précision ou la persistance de l'historique après rechargement.
+
+
+## Revue 8 — préparation de flotte et identité visuelle
+
+**Proposition examinée**
+Ajouter la réinitialisation complète de la flotte, l'indication de flotte prête, une animation de
+lancement, un effet de tir renforcé et des sons désactivables.
+
+**Hypothèse**
+La réinitialisation doit être exécutée par le serveur avec la même version attendue que les autres
+opérations de préparation ; les animations et les sons peuvent rester côté interface.
+
+**Expérience**
+Compilation ciblée de l'API après ajout de la route de reset, puis compilation de l'App après les
+changements d'interface et d'interopérabilité Web Audio.
+
+**Résultat attendu avant exécution**
+Les deux projets devaient compiler sans erreur.
+
+**Résultat observé**
+La compilation API a réussi en 2,1 s dans `obj\\fleet-validation`. La compilation App a réussi
+en 3,7 s dans `obj\\identity-validation`.
+
+**Décision et justification**
+
+**Preuves et limites**
+Les clics de reset, le rendu exact des animations et l'écoute des sons n'ont pas été vérifiés dans
+un navigateur pendant cette passe.
+
+
+## Revue 9 — corrections ergonomiques et audio
+
+**Proposition examinée**
+Corriger le pivot des bateaux, renforcer la hiérarchie des actions de préparation et intégrer une
+ambiance audio cohérente dans le lobby et la partie.
+
+**Hypothèse**
+Le pivot doit être décidé par la case cliquée et validé par le serveur ; l'audio peut rester dans
+le front avec une musique synthétisée, des effets distincts et des contrôles regroupés.
+
+**Expérience**
+Compilations ciblées du front après les corrections de rotation, de boutons et d'audio.
+
+**Résultat attendu avant exécution**
+Le front devait compiler sans erreur Razor, JavaScript embarqué ou interopérabilité.
+
+**Résultat observé**
+Les compilations ciblées `pivot-validation` et `audio-layout-validation` ont réussi.
+
+**Décision et justification**
+
+**Preuves et limites**
+Le rendu navigateur et le niveau sonore n'ont pas été mesurés automatiquement. Les tests de
+rotation ont été adaptés au pivot sélectionné ; un échec indépendant du placement reste signalé.
