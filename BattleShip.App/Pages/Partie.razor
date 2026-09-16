@@ -78,7 +78,8 @@ else
               Hits="state.Player.Hits"
               Preview="preview"
               OnCellClick="PlaceShip"
-              OnCellHover="ShowPreview" />
+              OnCellHover="ShowPreview"
+              OnLeave="@(() => preview = [])" />
 
         <Grid Title="Grille adverse"
               Width="state.Opponent.Width"

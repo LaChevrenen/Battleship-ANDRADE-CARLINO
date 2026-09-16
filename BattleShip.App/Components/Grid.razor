@@ -3,7 +3,7 @@
 @* Ce composant n'applique aucune règle : il peint les listes de cases qu'on lui donne et ignore
    à quelle grille il correspond. C'est la page qui décide ce qu'elle lui passe. *@
 
-<div class="grille">
+<div class="grille" @onmouseleave="@(() => OnLeave.InvokeAsync())">
     <h2>@Title</h2>
     <table>
         <thead>
@@ -49,6 +49,9 @@
     // Le composant signale la case cliquée ou survolée ; il ne décide jamais si l'action est permise.
     [Parameter] public EventCallback<Coordinate> OnCellClick { get; set; }
     [Parameter] public EventCallback<Coordinate> OnCellHover { get; set; }
+
+    // Souris sortie de la grille : sans ça, le dernier aperçu resterait affiché.
+    [Parameter] public EventCallback OnLeave { get; set; }
 
     // Ordre d'affichage seulement : une case coulée reste touchée, une case touchée porte un navire.
     private string CssClass(Coordinate cell) =>

@@ -60,8 +60,10 @@ dotnet test BattleShip.slnx
 
 ## Fonctionnalités
 
-- Partie contre l'ordinateur sur une grille 10 × 10, flotte 5, 4, 3, 3 et 2 cases, placée
-  aléatoirement par le serveur pour les deux camps.
+- Partie contre l'ordinateur sur une grille 10 × 10, flotte 5, 4, 3, 3 et 2 cases.
+- **Placement manuel de sa flotte** : choix du navire, bascule horizontal/vertical, aperçu au
+  survol, « Défaire », et « Placement aléatoire » autant de fois que voulu tant que la partie n'a
+  pas commencé. La flotte de l'ordinateur est placée par le serveur.
 - Toutes les règles sont appliquées côté serveur : placement, tours, rejeu tant qu'on touche,
   refus explicites, victoire.
 - Ordinateur « chasse-cible » : il tire au hasard, puis vise les cases voisines jusqu'à couler.
@@ -77,3 +79,6 @@ dotnet test BattleShip.slnx
   procédure `docs/VERIFICATION-MANUELLE.md`.
 - Les parties vivent en mémoire et n'expirent pas : un redémarrage du serveur les perd toutes, et
   la page affiche alors « Cette partie n'existe plus sur le serveur ».
+- Le client dessine la forme d'un navire pour l'aperçu au survol, donc il connaît sa géométrie.
+  Il ne juge jamais la validité d'un placement : chevauchement, contact et débordement sont
+  refusés par le serveur, qui reste seul juge.

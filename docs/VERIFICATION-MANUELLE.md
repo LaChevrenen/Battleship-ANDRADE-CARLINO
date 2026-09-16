@@ -1,4 +1,4 @@
-# Vérification manuelle du front
+﻿# Vérification manuelle du front
 
 Le front n'est couvert par aucun test automatisé (choix assumé, voir les limites du README).
 Cette procédure le remplace : elle se déroule à la main, dans le navigateur, et prend quelques
@@ -17,25 +17,58 @@ dotnet run --project BattleShip.App --launch-profile http
 Ouvrir `http://localhost:5274/`, puis les outils de développement, onglet Réseau, avec
 « Conserver le journal ».
 
-## 1. Créer et démarrer une partie
+## 1. Créer une partie et poser sa flotte
 
 1. Cliquer sur **Nouvelle partie**.
 2. L'URL devient `/partie/{identifiant}`, et les deux grilles apparaissent.
 
 À vérifier :
 
-- ma grille montre 5 navires (5, 4, 3, 3 et 2 cases) ;
+- **ma grille est vide** : c'est au joueur de poser sa flotte ;
+- la barre de préparation liste les navires à poser : `5 cases (× 1)`, `4 cases (× 1)`,
+  `3 cases (× 2)`, `2 cases (× 1)` ;
 - la grille adverse est entièrement vide ;
 - la phase affichée est `Setup`, sans tour ;
+- le bouton **Commencer** est désactivé ;
 - onglet Réseau : `POST /games` en `201`, puis `POST /battleship.GameService/GetGame` en `200`,
   précédé de sa pré-vérification `OPTIONS` en `204`.
 
-3. Cliquer sur **Commencer**.
+3. Choisir `5 cases`, puis survoler ma grille.
+
+À vérifier : l'aperçu surligne 5 cases à partir de la case survolée. Cliquer sur **Orientation**
+le fait basculer entre horizontal et vertical. En sortant de la grille, l'aperçu disparaît.
+
+4. Cliquer sur une case pour poser le navire, par exemple A1 en horizontal.
+
+À vérifier : les 5 cases deviennent des navires, `5 cases` quitte la liste, et la version augmente
+d'une unité dans l'appel suivant. Onglet Réseau : `POST /games/{id}/ships` en `200`.
+
+5. Choisir `4 cases` et cliquer sur A2, juste sous le premier navire.
+
+À vérifier : le message `Refusé : Ce navire en touche un autre par un côté.` s'affiche, **et la
+grille ne change pas**. Onglet Réseau : `409` avec `"rejection": "AdjacentShip"`.
+
+6. Cliquer sur **Défaire**.
+
+À vérifier : le dernier navire posé disparaît et sa longueur revient dans la liste.
+
+7. Cliquer sur **Placement aléatoire**.
+
+À vérifier : les 5 navires apparaissent d'un coup, la liste des navires à poser se vide, et le
+bouton **Commencer** devient actif.
+
+## 2. Démarrer la partie
+
+Cliquer sur **Commencer**.
 
 À vérifier : la phase passe à `InProgress`, le tour est `Player`, et si l'ordinateur a commencé,
-la ligne de message liste ses tirs d'ouverture, visibles sur ma grille.
+la ligne de message liste ses tirs d'ouverture, visibles sur ma grille. La barre de préparation
+disparaît.
 
-## 2. Tirer
+Puis cliquer sur une case de **ma** grille : rien ne se passe. Un placement après le démarrage
+serait refusé avec `NotInSetup`, mais l'écran n'envoie même plus la demande.
+
+## 3. Tirer
 
 Cliquer sur une case de la **grille adverse**.
 
@@ -47,7 +80,7 @@ Cliquer sur une case de la **grille adverse**.
 - après un tir touché, c'est encore mon tour et l'ordinateur n'a pas joué ;
 - onglet Réseau : `POST /games/{id}/shots` en `200`.
 
-## 3. Un tir refusé ne change rien
+## 4. Un tir refusé ne change rien
 
 Cliquer **deux fois** sur la même case de la grille adverse.
 
@@ -62,14 +95,14 @@ Cliquer **deux fois** sur la même case de la grille adverse.
 C'est le point important : le front n'anticipe rien. Tant que le serveur n'a pas répondu, aucune
 case ne bouge.
 
-## 4. Reprise après rechargement
+## 5. Reprise après rechargement
 
 Appuyer sur `F5` sur la page `/partie/{identifiant}`.
 
 À vérifier : la partie revient dans le même état, tirs compris. L'identifiant vient de l'URL, et
 l'état est relu par gRPC-Web.
 
-## 5. Les deux erreurs gRPC
+## 6. Les deux erreurs gRPC
 
 **Partie introuvable.** Arrêter l'API avec `Ctrl+C`, vérifier que le port est libre, la relancer,
 puis recharger la page.
@@ -83,7 +116,7 @@ pour un `POST` en `200`.
 À vérifier : le message `Identifiant refusé : L'identifiant de la partie n'est pas valide.`
 Onglet Réseau : `grpc-status: 3`.
 
-## 6. Fin de partie
+## 7. Fin de partie
 
 Jouer jusqu'au bout demande une soixantaine de clics. Pour aller droit à l'écran de fin, jouer la
 partie par l'API depuis un troisième terminal, puis recharger la page.
@@ -91,6 +124,8 @@ partie par l'API depuis un troisième terminal, puis recharger la page.
 ```powershell
 $api = "https://localhost:7260"
 $id = (Invoke-RestMethod -Method Post "$api/games").id
+$body = @{ expectedVersion = 0 } | ConvertTo-Json
+Invoke-RestMethod -Method Post "$api/games/$id/fleet/random" -ContentType 'application/json' -Body $body | Out-Null
 $turn = Invoke-RestMethod -Method Post "$api/games/$id/start"
 $version = $turn.state.version
 $cells = foreach ($row in 0..9) { foreach ($col in 0..9) { [pscustomobject]@{ c = $col; r = $row } } }
@@ -112,9 +147,10 @@ deux grilles toujours visibles. Cliquer sur une case de la grille adverse affich
 Dernier essai lancé pendant l'écriture de cette procédure : partie terminée après 51 tirs du
 joueur, gagnant `Computer`.
 
-## 7. Nouvelle partie
+## 8. Nouvelle partie
 
 Cliquer sur **Nouvelle partie**.
 
-À vérifier : l'URL change d'identifiant, la phase revient à `Setup`, les deux grilles sont
-réinitialisées, et l'ancienne partie reste accessible par son ancienne URL tant que l'API tourne.
+À vérifier : l'URL change d'identifiant, la phase revient à `Setup`, ma grille est vide avec toute
+la flotte à poser, et l'ancienne partie reste accessible par son ancienne URL tant que l'API
+tourne.
