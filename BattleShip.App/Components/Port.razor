@@ -1,5 +1,7 @@
-@* Le port : les navires qui restent à poser, dessinés à leur vraie longueur. Un navire retiré de
-   la grille y revient tout seul, puisque la liste vient du serveur. *@
+@using BattleShip.Models
+
+@* Le port : les navires qui restent à poser, dessinés à leur vraie longueur et dans l'orientation
+   choisie. Un navire retiré de la grille y revient tout seul, puisque la liste vient du serveur. *@
 
 <div class="port">
     <h2>Port</h2>
@@ -14,12 +16,12 @@
             {
                 var choix = length;
                 <li>
-                    <button class="navire-port @(choix == SelectedLength ? "choisi" : null)"
+                    <button class="navire-port @(Orientation == Orientation.Vertical ? "vertical" : null) @(choix == SelectedLength ? "choisi" : null)"
                             title="Navire de @choix cases"
                             @onclick="@(() => OnSelect.InvokeAsync(choix))">
                         @for (var cell = 0; cell < choix; cell++)
                         {
-                            <span class="case navire @(cell == 0 ? "bout-g" : null) @(cell == choix - 1 ? "bout-d" : null) bout-h bout-b"></span>
+                            <span class="case navire @HullClass(cell, choix)"></span>
                         }
                     </button>
                     <span class="reste">× @RemainingLengths.Count(remaining => remaining == choix)</span>
@@ -32,5 +34,11 @@
 @code {
     [Parameter, EditorRequired] public IReadOnlyList<int> RemainingLengths { get; set; } = [];
     [Parameter] public int? SelectedLength { get; set; }
+    [Parameter] public Orientation Orientation { get; set; } = Orientation.Horizontal;
     [Parameter] public EventCallback<int> OnSelect { get; set; }
+
+    // Mêmes classes de coque que sur la grille : seuls les bouts de la file sont arrondis.
+    private string HullClass(int cell, int length) => Orientation == Orientation.Horizontal
+        ? $"bout-h bout-b {(cell == 0 ? "bout-g" : null)} {(cell == length - 1 ? "bout-d" : null)}"
+        : $"bout-g bout-d {(cell == 0 ? "bout-h" : null)} {(cell == length - 1 ? "bout-b" : null)}";
 }

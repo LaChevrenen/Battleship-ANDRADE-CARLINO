@@ -114,24 +114,24 @@ code {
     text-align: start;
 }
 /* Grilles de jeu */
-.grilles { display: flex; gap: 2rem; flex-wrap: wrap; }
+.grilles { display: flex; gap: 2rem; flex-wrap: wrap; align-items: flex-start; outline: none; }
 .grille table { border-collapse: collapse; }
-.grille th { width: 1.6rem; height: 1.6rem; font-weight: normal; color: #555; }
-.grille td.case { width: 1.6rem; height: 1.6rem; border: 1px solid #bbb; }
-.grille td.eau { background: #eaf4fb; }
-.grille td.navire { background: #9aa5ad; }
-.grille td.rate { background: #eaf4fb; box-shadow: inset 0 0 0 6px #b9cfdd; }
-.grille td.touche { background: #e06c5a; }
-.grille td.coule { background: #7a2f22; }
+.grille th { width: 2.4rem; height: 2.4rem; font-weight: normal; color: #555; }
+.grille td.case { width: 2.4rem; height: 2.4rem; border: 1px solid #b9c6cf; position: relative; }
 .grille td.cliquable { cursor: pointer; }
+.grille td.cliquable:hover { filter: brightness(0.92); box-shadow: inset 0 0 0 2px #2d6cdf; }
 
-/* Préparation de la flotte */
-.preparation { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.75rem; }
-.preparation button.choisi { font-weight: bold; outline: 2px solid #2d6cdf; }
-.grille td.apercu { outline: 2px solid #2d6cdf; outline-offset: -2px; }
+/* Un état, une couleur : eau, navire intact, raté, touché, coulé */
+.grille td.eau { background: #e7f2fb; }
+.grille td.navire { background: #8d99a6; border-color: #71808d; }
+.grille td.rate { background: #e7f2fb; }
+.grille td.rate::after { content: ''; position: absolute; inset: 40%; border-radius: 50%; background: #7d98ad; }
+.grille td.touche { background: #f08c00; border-color: #c97a00; }
+.grille td.touche::after { content: '✕'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #5b3a00; font-weight: bold; }
+.grille td.coule { background: #862e2e; border-color: #5f2020; }
+.grille td.coule::after { content: '✕'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #ffe3e3; font-weight: bold; }
 
 /* Coques : bouts arrondis là où le navire s'arrête */
-.grille td.navire, .grille td.touche, .grille td.coule, .port .case.navire { border-radius: 0; }
 .navire.bout-g, .touche.bout-g, .coule.bout-g { border-top-left-radius: 45%; border-bottom-left-radius: 45%; }
 .navire.bout-d, .touche.bout-d, .coule.bout-d { border-top-right-radius: 45%; border-bottom-right-radius: 45%; }
 .navire.bout-h, .touche.bout-h, .coule.bout-h { border-top-left-radius: 45%; border-top-right-radius: 45%; }
@@ -141,10 +141,15 @@ code {
 .grille td.apercu-ok { outline: 3px solid #2f9e44; outline-offset: -3px; }
 .grille td.apercu-ko { outline: 3px solid #c92a2a; outline-offset: -3px; }
 
-/* Port */
+/* Préparation de la flotte */
+.preparation { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.75rem; }
+
+/* Port : les navires restants, dessinés dans l'orientation choisie */
 .port ul { list-style: none; padding: 0; margin: 0; }
-.port li { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; }
+.port li { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
 .port .reste { color: #555; }
 .port button.navire-port { display: inline-flex; padding: 3px; background: none; border: 1px solid transparent; cursor: pointer; }
+.port button.navire-port.vertical { flex-direction: column; }
+.port button.navire-port:hover { background: #f1f3f5; }
 .port button.navire-port.choisi { border-color: #2d6cdf; background: #eef4ff; }
-.port .case.navire { display: inline-block; width: 1.6rem; height: 1.6rem; background: #9aa5ad; border: 1px solid #7d878f; }
+.port .case.navire { display: inline-block; width: 2.4rem; height: 2.4rem; background: #8d99a6; border: 1px solid #71808d; }

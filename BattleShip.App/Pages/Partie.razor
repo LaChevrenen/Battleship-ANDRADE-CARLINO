@@ -41,9 +41,10 @@ else
         @if (state.Phase == GamePhase.Setup)
         {
             <div class="preparation">
-                <button @onclick="ToggleOrientation">
+                <button @onclick="ToggleOrientation" title="Touche R ou molette de la souris">
                     Orientation : @(orientation == Orientation.Horizontal ? "horizontale" : "verticale")
                 </button>
+                <span>Touche <kbd>R</kbd> ou molette pour pivoter.</span>
                 <button @onclick="PlaceFleetAtRandom" disabled="@busy">Placement aléatoire</button>
                 <span>Clique un navire posé pour le retirer.</span>
                 <button @onclick="Start" disabled="@(busy || state.Player.RemainingShipLengths.Count > 0)">Commencer</button>
@@ -61,11 +62,13 @@ else
         <p role="alert">Refusé : @refusal</p>
     }
 
-    <div class="grilles">
+    @* tabindex : sans focus, l'élément ne reçoit pas les touches. preventDefault évite que la molette fasse défiler la page. *@
+    <div class="grilles" tabindex="0" @ref="board" @onkeydown="OnKeyDown" @onwheel="OnWheel" @onwheel:preventDefault>
         @if (state.Phase == GamePhase.Setup)
         {
             <Port RemainingLengths="state.Player.RemainingShipLengths"
                   SelectedLength="selectedLength"
+                  Orientation="orientation"
                   OnSelect="Select" />
         }
 
@@ -108,6 +111,9 @@ else
     // Cases où le navire choisi tient, telles que le serveur les a calculées.
     private IReadOnlyList<Coordinate> validOrigins = [];
 
+    private ElementReference board;
+    private bool focusPlaced;
+
     private IReadOnlyCollection<Coordinate> OwnShipCells =>
         state is null ? [] : [.. state.Player.Ships.SelectMany(ship => ship)];
 
@@ -146,6 +152,24 @@ else
         }
     }
 
+    // Le focus est donné une fois, pour que R fonctionne sans que le joueur ait à cliquer d'abord.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusPlaced || state?.Phase != GamePhase.Setup)
+            return;
+
+        focusPlaced = true;
+        await board.FocusAsync();
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs key)
+    {
+        if (key.Key is "r" or "R")
+            await ToggleOrientation();
+    }
+
+    private Task OnWheel(WheelEventArgs wheel) => ToggleOrientation();
+
     private async Task Select(int length)
     {
         selectedLength = length;
@@ -155,6 +179,9 @@ else
 
     private async Task ToggleOrientation()
     {
+        if (state?.Phase != GamePhase.Setup)
+            return;
+
         orientation = orientation == Orientation.Horizontal ? Orientation.Vertical : Orientation.Horizontal;
         preview = [];
         await RefreshValidOrigins();

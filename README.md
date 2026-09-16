@@ -73,6 +73,13 @@ dotnet test BattleShip.slnx
 
 ## Arbitrages
 
+- **Glisser-déposer pour poser les navires : envisagé, écarté.** Le clic couvre déjà le besoin :
+  sélection du navire dans le port, aperçu au survol, clic pour poser, clic sur un navire posé pour
+  le retirer. Le glisser aurait ajouté, en fin de projet, un chemin d'entrée qu'aucun test ne
+  couvre : décalage entre la case saisie et l'origine posée, survol à refaire pendant le glisser,
+  zone de retour au port, et un mode tactile séparé puisque le glisser HTML5 ne fonctionne pas au
+  doigt.
+
 ## Limites connues
 
 - Le front n'est couvert par aucun test automatisé. Sa vérification se fait à la main, avec la
