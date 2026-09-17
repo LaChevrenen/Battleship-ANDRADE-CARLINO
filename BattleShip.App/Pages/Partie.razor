@@ -32,21 +32,25 @@ else
 {
     @if (state.Phase == GamePhase.Finished)
     {
-        <div class="outcome-card @(state.Winner == Side.Player ? "outcome-win" : "outcome-loss")">
-            <span class="outcome-mark" aria-hidden="true">@(state.Winner == Side.Player ? "✓" : "×")</span>
-            <h2>@(state.Winner == Side.Player ? "Tu as gagné." : "L'ordinateur a gagné.")</h2>
-            <p>@(state.Winner == Side.Player ? "La flotte adverse est vaincue." : "Ta flotte a été entièrement touchée.")</p>
-            <div class="outcome-stats">
-                <span><strong>@state.Statistics.TotalShots</strong> tirs</span>
-                <span><strong>@state.Statistics.SuccessfulShots</strong> touches</span>
-                <span><strong>@state.Statistics.AccuracyPercentage%</strong> précision</span>
-                <span><strong>@FormatDuration(state.Statistics.DurationSeconds)</strong> durée</span>
+        @* Overlay plutôt qu'un bloc dans le fil de la page : la grille finale reste visible
+           derrière, et rien ne se décale — seul l'écran se recouvre, jamais la mise en page. *@
+        <div class="outcome-overlay">
+            <div class="outcome-card @(state.Winner == Side.Player ? "outcome-win" : "outcome-loss")">
+                <span class="outcome-mark" aria-hidden="true">@(state.Winner == Side.Player ? "✓" : "×")</span>
+                <h2>@(state.Winner == Side.Player ? "Tu as gagné." : "L'ordinateur a gagné.")</h2>
+                <p>@(state.Winner == Side.Player ? "La flotte adverse est vaincue." : "Ta flotte a été entièrement touchée.")</p>
+                <div class="outcome-stats">
+                    <span><strong>@state.Statistics.TotalShots</strong> tirs</span>
+                    <span><strong>@state.Statistics.SuccessfulShots</strong> touches</span>
+                    <span><strong>@state.Statistics.AccuracyPercentage%</strong> précision</span>
+                    <span><strong>@FormatDuration(state.Statistics.DurationSeconds)</strong> durée</span>
+                </div>
+                <button class="new-game-button new-game-button-secondary" data-sound="primary" @onclick="NewGame">
+                    <span class="new-game-icon" aria-hidden="true">+</span>
+                    <span>Nouvelle partie</span>
+                </button>
             </div>
         </div>
-        <button class="new-game-button new-game-button-secondary" data-sound="primary" @onclick="NewGame">
-            <span class="new-game-icon" aria-hidden="true">+</span>
-            <span>Nouvelle partie</span>
-        </button>
     }
     else
     {
@@ -54,17 +58,14 @@ else
            « L'ordinateur joue » serait faux. *@
         <div class="turn-banner @(state.CurrentTurn == Side.Computer ? "turn-computer" : "turn-player")">
             <span class="turn-dot" aria-hidden="true"></span>
-            <div>
-                <p class="turn-label">
-                    @(state.CurrentTurn switch
-                    {
-                        Side.Player => "À ton tour",
-                        Side.Computer => "L'ordinateur joue",
-                        _ => "Prépare ta flotte",
-                    })
-                </p>
-                <p class="turn-detail">Phase : @state.Phase</p>
-            </div>
+            <p class="turn-label">
+                @(state.CurrentTurn switch
+                {
+                    Side.Player => "À ton tour",
+                    Side.Computer => "L'ordinateur joue",
+                    _ => "Prépare ta flotte",
+                })
+            </p>
         </div>
 
         @if (state.Phase == GamePhase.Setup)
@@ -238,10 +239,6 @@ else
 
             <div class="hud-card">
                 <h3>État</h3>
-                <div class="hud-item">
-                    <span>Phase</span>
-                    <strong>@state.Phase</strong>
-                </div>
                 @if (state.CurrentTurn is not null)
                 {
                     <div class="hud-item">

@@ -41,7 +41,7 @@ Ouvrir `http://localhost:5274/`, puis les outils de développement, onglet Rése
 
 - **ma grille est vide** : c'est au joueur de poser sa flotte ;
 - le **port** dessine les navires restants à leur vraie longueur : 5, 4, 3, 3 et 2 cases ;
-- le bandeau annonce **Prépare ta flotte** et le panneau **État** affiche la phase `Setup` ;
+- le bandeau annonce **Prépare ta flotte** ;
 - le sélecteur **Niveau de l'ordinateur** est dans la barre de préparation, réglé sur **Normal** ;
 - **Commencer** est désactivé, et **Réinitialiser** aussi tant que rien n'est posé ;
 - onglet Réseau : `POST /games` en `201`, `POST /battleship.GameService/GetGame` en `200` précédé
@@ -208,8 +208,9 @@ foreach ($cell in $cells) {
 Ouvrir l'URL affichée.
 
 À vérifier : la carte de fin annonce le gagnant, avec **nombre de tirs**, **touches**,
-**précision** et **durée**. Cliquer sur une case de la grille adverse affiche alors
-`La partie est terminée.`
+**précision** et **durée**, **par-dessus** les deux grilles dans leur état final — la mise en page
+ne se décale pas, la carte flotte au milieu de l'écran, fond légèrement assombri. Cliquer sur une
+case de la grille adverse affiche alors `La partie est terminée.`
 
 Dernier essai lancé pendant l'écriture de cette procédure : partie terminée après 51 tirs du
 joueur, gagnant `Computer`.
