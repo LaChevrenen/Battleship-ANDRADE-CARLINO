@@ -218,6 +218,14 @@ else
         <p class="game-feedback game-feedback-refusal" role="alert">@unreachable</p>
     }
 
+    @if (showStartBanner)
+    {
+        <div class="start-banner" aria-hidden="true">
+            <span class="start-banner-icon">⚓</span>
+            <span class="start-banner-text">Combat engagé !</span>
+        </div>
+    }
+
     <div class="game-shell @(starting ? "game-starting" : null)">
         <aside class="game-sidebar">
             @if (state.Phase == GamePhase.Setup)
@@ -375,6 +383,15 @@ else
     // zéro dans les deux cas, donc rien ne sert de garder le mode actif au-delà d'un coup.
     private bool specialAttackMode;
     private Coordinate? specialAttackHover;
+
+    // Bannière « Combat engagé ! » affichée pendant le jingle de début de partie.
+    private bool showStartBanner;
+    private static readonly TimeSpan StartBannerDuration = TimeSpan.FromMilliseconds(1100);
+
+    // Ne s'applique qu'au tout premier tir de l'ordinateur, quand il commence : sans lui, ce tir
+    // peut s'afficher avant que l'écran ait fini de charger, et passe inaperçu. Les tirs suivants,
+    // dans cette série ou dans une série ultérieure, gardent leur cadence normale (450 ms).
+    private static readonly TimeSpan FirstComputerShotDelay = TimeSpan.FromSeconds(1);
 
     // Cases où le navire choisi tient, telles que le serveur les a calculées.
     private IReadOnlyList<Coordinate> validOrigins = [];
@@ -753,15 +770,20 @@ else
         if (result is null)
         {
             busy = false;
+            starting = false;
             return;
         }
 
         if (result.Turn is { } turn)
         {
+            // Le jingle et l'animation doivent être terminés avant qu'aucun coup ne soit révélé —
+            // sans quoi le premier tir de l'ordinateur peut s'afficher avant que l'écran ait fini
+            // de charger, et passe inaperçu.
+            await PlayStartSequence();
             await AnimateTurn(turn, turn.ComputerShots.Count == 0
                 ? "À toi de jouer."
-                : $"L'ordinateur a commencé : {Describe(turn.ComputerShots)}");
-            await Audio.PlayAsync(turn.ComputerShots.Count == 0 ? "hit" : "start");
+                : $"L'ordinateur a commencé : {Describe(turn.ComputerShots)}",
+                firstComputerShotDelay: FirstComputerShotDelay);
         }
         else
         {
@@ -773,6 +795,19 @@ else
 
         busy = false;
         starting = false;
+    }
+
+    // Task.Delay attend une durée fixe côté écran : Audio.PlayAsync ne fait que lancer le jingle,
+    // il ne rend pas la main quand celui-ci finit de jouer (Web Audio planifie et rend la main
+    // aussitôt). StartBannerDuration doit donc rester au moins aussi longue que le jingle "start".
+    private async Task PlayStartSequence()
+    {
+        showStartBanner = true;
+        await InvokeAsync(StateHasChanged);
+        await Audio.PlayAsync("start");
+        await Task.Delay(StartBannerDuration);
+        showStartBanner = false;
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task Fire(Coordinate target)
@@ -802,8 +837,8 @@ else
             var prefix = special ? "Attaque spéciale ! " : string.Empty;
             await AnimateTurn(turn, prefix + Describe(turn), target);
             await Audio.PlayAsync(turn.PlayerOutcome == ShotOutcome.Sunk ? "sunk" : turn.PlayerOutcome == ShotOutcome.Hit ? "hit" : "miss");
-            if (turn.State.Phase == GamePhase.Finished && turn.State.Winner == Side.Player)
-                await Audio.PlayAsync("win");
+            if (turn.State.Phase == GamePhase.Finished)
+                await Audio.PlayAsync(turn.State.Winner == Side.Player ? "win" : "lose");
         }
         else
         {
@@ -815,7 +850,7 @@ else
         busy = false;
     }
 
-    private async Task AnimateTurn(TurnDto turn, string finalMessage, Coordinate? playerTarget = null)
+    private async Task AnimateTurn(TurnDto turn, string finalMessage, Coordinate? playerTarget = null, TimeSpan? firstComputerShotDelay = null)
     {
         var previous = state!;
         animatedCell = playerTarget;
@@ -831,8 +866,15 @@ else
 
         for (var index = 0; index < turn.ComputerShots.Count; index++)
         {
-            if (index > 0)
+            if (index == 0)
+            {
+                if (firstComputerShotDelay is { } delay)
+                    await Task.Delay(delay);
+            }
+            else
+            {
                 await Task.Delay(450);
+            }
 
             var shot = turn.ComputerShots[index];
             animatedCell = shot.Target;

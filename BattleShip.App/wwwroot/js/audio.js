@@ -151,7 +151,7 @@ const UI_SOUNDS = {
     select: { notes: [700, 900], type: 'triangle', duration: 0.09, volume: 0.2, stagger: 0.05 },
 };
 
-const playUiSound = (context, start, sound) => {
+const playSound = (context, start, sound) => {
     sound.notes.forEach((frequency, index) =>
         tone(context, frequency, start + index * (sound.stagger ?? 0), sound.duration, sound.volume, sound.type));
 
@@ -159,29 +159,29 @@ const playUiSound = (context, start, sound) => {
         noise(context, start, sound.noiseDuration, sound.noiseVolume ?? 0.1);
 };
 
+// Issue d'un tir ou d'une partie. miss/hit/sunk reproduisent exactement les réglages d'avant les
+// sons d'interface ci-dessus (mêmes fréquences, mêmes durées) ; seuls start/win/lose sont
+// nouveaux ou enrichis, cf. Partie.razor pour la séquence de début de partie qui déclenche "start".
+const GAME_SOUNDS = {
+    miss: { notes: [220], type: 'triangle', duration: 0.36, volume: 0.38, noiseDuration: 0.12, noiseVolume: 0.22 },
+    hit: { notes: [440, 554, 659], type: 'triangle', duration: 0.36, volume: 0.38, stagger: 0.07, noiseDuration: 0.12, noiseVolume: 0.22 },
+    sunk: { notes: [220, 165, 110], type: 'triangle', duration: 0.36, volume: 0.48, stagger: 0.07, noiseDuration: 0.42, noiseVolume: 0.34 },
+    // Montée sur cinq notes, calée pour tenir dans l'animation "Combat engagé !" (~1,1 s) sans être coupée.
+    start: { notes: [261.63, 329.63, 392.00, 523.25, 659.25], type: 'triangle', duration: 0.3, volume: 0.4, stagger: 0.1 },
+    // Même geste ascendant que "start", complété d'une octave de résolution et d'un volume plus large.
+    win: { notes: [523.25, 659.25, 783.99, 1046.50, 1318.51], type: 'triangle', duration: 0.42, volume: 0.42, stagger: 0.095, noiseDuration: 0.12, noiseVolume: 0.22 },
+    // Descente à l'inverse de "win", avec la traîne de bruit la plus longue après "sunk" : toute
+    // la flotte est perdue, pas un seul navire.
+    lose: { notes: [392.00, 349.23, 293.66, 220.00, 164.81], type: 'triangle', duration: 0.4, volume: 0.4, stagger: 0.1, noiseDuration: 0.3, noiseVolume: 0.26 },
+};
+
 window.battleSound = (kind) => {
     const context = audio();
     if (!context) return;
 
     const start = context.currentTime;
-
-    if (UI_SOUNDS[kind]) {
-        playUiSound(context, start, UI_SOUNDS[kind]);
-        return;
-    }
-
-    // Issue d'un tir ou d'une partie : inchangé depuis avant les sons d'interface ci-dessus.
-    const notes = kind === 'win' ? [523, 659, 784, 1047]
-        : kind === 'sunk' ? [220, 165, 110]
-        : kind === 'hit' ? [440, 554, 659]
-        : kind === 'click' ? [700, 900]
-        : [220];
-
-    notes.forEach((frequency, index) =>
-        tone(context, frequency, start + index * 0.07, kind === 'win' ? 0.5 : 0.36, kind === 'sunk' ? 0.48 : 0.38));
-
-    if (kind !== 'click')
-        noise(context, start, kind === 'sunk' ? 0.42 : 0.12, kind === 'sunk' ? 0.34 : 0.22);
+    const sound = UI_SOUNDS[kind] ?? GAME_SOUNDS[kind];
+    if (sound) playSound(context, start, sound);
 };
 
 // --- Ambiance calme -------------------------------------------------------------------------
