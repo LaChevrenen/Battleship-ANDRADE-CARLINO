@@ -1,4 +1,4 @@
-# Règles du jeu — référence commune
+﻿# Règles du jeu — référence commune
 
 Les règles marquées **[E0]** (configuration de la partie) et **[E0bis]** (placement manuel)
 sont des extensions choisies. Le socle se joue sur une grille 10×10, avec la flotte par défaut
@@ -63,9 +63,15 @@ Un tir refusé **ne change rien** : ni la grille, ni le tour, ni le nombre de co
 
 - Il est soumis **aux mêmes règles** que le joueur : ses tirs passent par les mêmes
   vérifications, et il ne tire jamais hors grille ni deux fois sur la même case.
-- Stratégie de base dite « chasse-cible » : il tire au hasard jusqu'à toucher un navire, puis
-  vise les cases voisines jusqu'à l'annonce « coulé ». Il ne dispose que des informations
-  qu'aurait un joueur humain.
+- Trois niveaux, choisis par le joueur pendant la préparation et modifiables tant que la partie
+  n'a pas commencé :
+  - **Facile** : il tire au hasard parmi les cases jamais tirées.
+  - **Normal** : stratégie dite « chasse-cible ». Il tire au hasard jusqu'à toucher un navire,
+    puis vise les cases voisines jusqu'à l'annonce « coulé ».
+  - **Difficile** : il évalue, pour chaque case libre, le nombre de placements de navires encore
+    compatibles avec ce qu'il sait, et vise la case la plus probable.
+- Quel que soit le niveau, il ne dispose que des informations qu'aurait un joueur humain : les
+  résultats de ses propres tirs, et rien d'autre.
 
 ## Information cachée
 
