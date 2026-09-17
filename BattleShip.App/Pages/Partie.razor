@@ -90,6 +90,81 @@ else
         }
     }
 
+    <button class="rules-button" @onclick="() => rulesOpen = true" aria-label="Règles du jeu" title="Règles du jeu">?</button>
+
+    @* Un rappel des règles, pas une source de vérité : le serveur reste seul juge, et ce panneau
+       ne fait qu'expliquer ce qu'il applique. *@
+    @if (rulesOpen)
+    {
+        <div class="rules-overlay" @onclick="() => rulesOpen = false">
+            <div class="rules-panel" role="dialog" aria-modal="true" aria-label="Règles du jeu" @onclick:stopPropagation>
+                <div class="rules-header">
+                    <h2>Règles</h2>
+                    <button class="rules-close" @onclick="() => rulesOpen = false" aria-label="Fermer">×</button>
+                </div>
+
+                <section>
+                    <h3>Le plateau</h3>
+                    <p>
+                        Une grille de 10 × 10 par camp, et la même flotte des deux côtés :
+                        un navire de 5 cases, un de 4, deux de 3 et un de 2.
+                    </p>
+                </section>
+
+                <section>
+                    <h3>Poser sa flotte</h3>
+                    <p>
+                        Un navire occupe une ligne droite, horizontale ou verticale. Il ne peut ni sortir
+                        de la grille, ni en chevaucher un autre, ni en toucher un autre par un côté.
+                        Le contact en diagonale, lui, est permis.
+                    </p>
+                </section>
+
+                <section>
+                    <h3>Commandes</h3>
+                    <p>
+                        Clique un navire du port pour le prendre en main, la molette l'oriente, un clic
+                        sur la grille le pose. Clique un navire déjà posé pour le reprendre.
+                        Le contour vert ou rouge vient du serveur : c'est lui qui accepte ou refuse.
+                    </p>
+                </section>
+
+                <section>
+                    <h3>Tirer</h3>
+                    <p>
+                        Désigne une case de la grille adverse : à l'eau, touché, ou coulé.
+                        Tu gardes la main tant que tu touches ; un tir à l'eau la passe à l'ordinateur.
+                        Rejouer une case déjà tirée est refusé et ne compte pas comme un coup.
+                    </p>
+                </section>
+
+                <section>
+                    <h3>Gagner</h3>
+                    <p>
+                        Le premier qui coule toute la flotte adverse l'emporte, et la partie s'arrête
+                        aussitôt, même au milieu d'une série.
+                    </p>
+                </section>
+
+                <section>
+                    <h3>Ce que tu ne vois pas</h3>
+                    <p>
+                        La position d'un navire adverse n'apparaît qu'une fois ce navire coulé. Tant
+                        qu'il flotte, elle ne quitte jamais le serveur.
+                    </p>
+                </section>
+
+                <section>
+                    <h3>L'ordinateur</h3>
+                    <p>
+                        Il joue avec les mêmes règles que toi et ne sait rien de plus. Il tire au hasard,
+                        puis vise les cases voisines dès qu'il touche.
+                    </p>
+                </section>
+            </div>
+        </div>
+    }
+
     @if (message is not null)
     {
         <p class="notice">@message</p>
@@ -216,6 +291,7 @@ else
     private bool starting;
     private bool soundEnabled = true;
     private bool musicEnabled = true;
+    private bool rulesOpen;
     private int? selectedLength;
     private int? selectedPortIndex;
     private Orientation orientation = Orientation.Horizontal;
