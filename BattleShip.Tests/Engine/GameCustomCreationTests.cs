@@ -62,11 +62,11 @@ public sealed class GameCustomCreationTests
     }
 
     [Fact]
-    public void Une_partie_classique_a_toujours_les_attaques_speciales_activees()
+    public void Une_partie_classique_n_a_jamais_les_attaques_speciales_activees()
     {
         var game = Game.CreateWithRandomComputerFleet(new Random(0));
 
-        Assert.True(game.SpecialAttacksEnabled);
+        Assert.False(game.SpecialAttacksEnabled);
     }
 
     [Fact]

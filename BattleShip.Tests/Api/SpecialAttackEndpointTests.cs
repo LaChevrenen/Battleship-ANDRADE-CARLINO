@@ -26,14 +26,9 @@ public sealed class SpecialAttackEndpointTests : IClassFixture<WebApplicationFac
             .WithWebHostBuilder(builder => builder.ConfigureTestServices(services => services.AddSingleton(new Random(Seed))))
             .CreateClient();
 
-    private async Task<GameStateDto> CreateStartedGame()
-    {
-        var created = (await (await client.PostAsync("/games", null)).Content.ReadFromJsonAsync<GameStateDto>(Json))!;
-        var placed = await client.PostAsJsonAsync($"/games/{created.Id}/fleet/random", new { expectedVersion = created.Version }, Json);
-        placed.EnsureSuccessStatusCode();
-        var response = await client.PostAsync($"/games/{created.Id}/start", null);
-        return (await response.Content.ReadFromJsonAsync<TurnDto>(Json))!.State;
-    }
+    // Partie classique en apparence, mais les attaques spéciales n'y sont plus jamais activées :
+    // les mécanismes testés ici ont besoin d'un jeu personnalisé pour les activer explicitement.
+    private Task<GameStateDto> CreateStartedGame() => CreateStartedCustomGame(specialAttacksEnabled: true);
 
     private async Task<GameStateDto> CreateStartedCustomGame(bool specialAttacksEnabled)
     {
@@ -144,11 +139,11 @@ public sealed class SpecialAttackEndpointTests : IClassFixture<WebApplicationFac
     }
 
     [Fact]
-    public async Task Une_partie_classique_a_toujours_les_attaques_speciales_activees()
+    public async Task Une_partie_classique_n_a_jamais_les_attaques_speciales_activees()
     {
-        var state = await CreateStartedGame();
+        var created = (await (await client.PostAsync("/games", null)).Content.ReadFromJsonAsync<GameStateDto>(Json))!;
 
-        Assert.True(state.SpecialAttacksEnabled);
+        Assert.False(created.SpecialAttacksEnabled);
     }
 
     [Fact]

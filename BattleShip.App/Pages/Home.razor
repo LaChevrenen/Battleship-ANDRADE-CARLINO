@@ -12,7 +12,11 @@
 <div class="home-heading">
     <p class="home-kicker">Centre de commandement</p>
     <h1>Bataille navale</h1>
-    <p>Une partie contre l'ordinateur, sur une grille de 10 × 10. Les flottes sont placées par le serveur.</p>
+    <p>
+        @(customOpen
+            ? "Choisis la taille de la grille, la flotte et les réglages de cette partie : le serveur vérifie que tout tient avant de la créer."
+            : "Une partie contre l'ordinateur, sur une grille de 10 × 10. Les flottes sont placées par le serveur.")
+    </p>
 </div>
 
 @if (customOpen)
@@ -23,7 +27,7 @@ else
 {
     <div class="new-game-controls">
         <button class="new-game-button" data-sound="primary" @onclick="NewGame" disabled="@creating">
-            <span class="new-game-icon" aria-hidden="true">+</span>
+            <span class="new-game-icon new-game-icon-plus" aria-hidden="true"></span>
             <span>@(creating ? "Création en cours..." : "Partie classique")</span>
         </button>
         <button class="new-game-button new-game-button-secondary" data-sound="secondary" @onclick="@(() => customOpen = true)" disabled="@creating">
@@ -62,6 +66,7 @@ else if (games.Any())
                     <div class="game-row">
                         <div class="game-info">
                             <span class="game-status status-active">En cours</span>
+                            <span class="game-kind">@(game.IsCustom ? "Personnalisée" : "Classique")</span>
                             <span class="game-date">@game.CreatedAt.LocalDateTime.ToString("g")</span>
                         </div>
                         <a class="game-action" data-sound="nav" href="@($"/partie/{game.Id}")">Reprendre <span aria-hidden="true">→</span></a>
@@ -91,6 +96,7 @@ else if (games.Any())
                     <div class="game-row">
                         <div class="game-info">
                             <span class="game-status @(game.Winner == Side.Player ? "status-win" : "status-loss")">@(game.Winner == Side.Player ? "Victoire" : "Défaite")</span>
+                            <span class="game-kind">@(game.IsCustom ? "Personnalisée" : "Classique")</span>
                             <span class="game-date">@game.CreatedAt.LocalDateTime.ToString("g")</span>
                         </div>
                         <a class="game-action" data-sound="nav" href="@($"/partie/{game.Id}")">Voir <span aria-hidden="true">→</span></a>

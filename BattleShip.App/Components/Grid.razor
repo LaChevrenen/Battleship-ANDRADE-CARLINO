@@ -58,6 +58,7 @@
     [Parameter] public bool PreviewValid { get; set; }
     [Parameter] public Coordinate? AnimatedCell { get; set; }
     [Parameter] public ShotOutcome? AnimatedOutcome { get; set; }
+    [Parameter] public bool AnimatedSpecial { get; set; }
 
     // Case où l'ordinateur a tiré en dernier, marquée durablement — contrairement à AnimatedCell,
     // qui ne joue qu'une brève animation d'impact et ne laisse aucune trace une fois finie.
@@ -99,7 +100,7 @@
         !Preview.Contains(cell) ? null : PreviewValid ? "apercu-ok" : "apercu-ko";
 
     private string? AnimationClass(Coordinate cell) =>
-        AnimatedCell != cell || AnimatedOutcome is null ? null : "tir-anime";
+        AnimatedCell != cell || AnimatedOutcome is null ? null : AnimatedSpecial ? "tir-special-anime" : "tir-anime";
 
     private string? LastShotClass(Coordinate cell) =>
         cell == LastComputerShot ? "dernier-tir-ia" : null;

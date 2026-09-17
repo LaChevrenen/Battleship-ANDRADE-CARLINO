@@ -16,9 +16,10 @@ et un placement aléatoire.
 - **[E0]** Le serveur **refuse une configuration qu'il ne parvient pas à placer** dans la limite
   d'essais du placement aléatoire (voir ci-dessous), même si un placement existe peut-être en
   théorie.
-- **[E0] Attaques spéciales** : activées par défaut, désactivables pour une partie personnalisée.
-  Une partie classique les a **toujours** activées. Désactivées, la jauge des deux camps reste à
-  zéro pour toute la partie et une attaque spéciale est refusée quelle que soit la situation.
+- **[E0] Attaques spéciales** : réservées à la partie personnalisée, où elles sont activées par
+  défaut et désactivables. Une partie classique ne les a **jamais** activées. Désactivées, la
+  jauge des deux camps reste à zéro pour toute la partie et une attaque spéciale est refusée
+  quelle que soit la situation.
 
 ## Coordonnées
 

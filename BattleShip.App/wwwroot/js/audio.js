@@ -160,15 +160,18 @@ const playSound = (context, start, sound) => {
 };
 
 // Issue d'un tir ou d'une partie. miss/hit/sunk reproduisent exactement les réglages d'avant les
-// sons d'interface ci-dessus (mêmes fréquences, mêmes durées) ; seuls start/win/lose sont
-// nouveaux ou enrichis, cf. Partie.razor pour la séquence de début de partie qui déclenche "start".
+// sons d'interface ci-dessus (mêmes fréquences, mêmes durées) ; les autres sont nouveaux ou
+// enrichis. Voir Partie.razor pour la séquence de décompte qui déclenche countdown-tick puis start.
 const GAME_SOUNDS = {
     miss: { notes: [220], type: 'triangle', duration: 0.36, volume: 0.38, noiseDuration: 0.12, noiseVolume: 0.22 },
     hit: { notes: [440, 554, 659], type: 'triangle', duration: 0.36, volume: 0.38, stagger: 0.07, noiseDuration: 0.12, noiseVolume: 0.22 },
     sunk: { notes: [220, 165, 110], type: 'triangle', duration: 0.36, volume: 0.48, stagger: 0.07, noiseDuration: 0.42, noiseVolume: 0.34 },
-    // Montée sur cinq notes, calée pour tenir dans l'animation "Combat engagé !" (~1,1 s) sans être coupée.
-    start: { notes: [261.63, 329.63, 392.00, 523.25, 659.25], type: 'triangle', duration: 0.3, volume: 0.4, stagger: 0.1 },
-    // Même geste ascendant que "start", complété d'une octave de résolution et d'un volume plus large.
+    // Tic neutre et bref, une fois par chiffre du décompte (3, 2, 1).
+    'countdown-tick': { notes: [523.25], type: 'square', duration: 0.1, volume: 0.26 },
+    // Impact net sur "Feu !" : trois notes rapprochées, timbre plus mordant (dent de scie) et un
+    // souffle bref pour la sensation de départ, plutôt que la montée mélodique d'avant.
+    start: { notes: [392.00, 523.25, 659.25], type: 'sawtooth', duration: 0.22, volume: 0.42, stagger: 0.05, noiseDuration: 0.22, noiseVolume: 0.3 },
+    // Montée sur cinq notes complétée d'une octave de résolution.
     win: { notes: [523.25, 659.25, 783.99, 1046.50, 1318.51], type: 'triangle', duration: 0.42, volume: 0.42, stagger: 0.095, noiseDuration: 0.12, noiseVolume: 0.22 },
     // Descente à l'inverse de "win", avec la traîne de bruit la plus longue après "sunk" : toute
     // la flotte est perdue, pas un seul navire.

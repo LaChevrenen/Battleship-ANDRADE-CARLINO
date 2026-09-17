@@ -85,5 +85,5 @@ public static class GameDtoMapper
 
     // Game ne transmet que les tirs acceptés de l'ordinateur : leur résultat est toujours renseigné.
     private static ComputerShotDto ToComputerShotDto(ComputerShot shot) =>
-        new(shot.Target, shot.Result.Outcome!.Value);
+        new(shot.Target, shot.Result.Outcome!.Value, shot.SpecialAttack);
 }

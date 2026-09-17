@@ -6,4 +6,5 @@ public sealed record GameSummaryDto(
     GamePhase Phase,
     Side? Winner,
     int PlayerShotCount,
-    int? DurationSeconds);
+    int? DurationSeconds,
+    bool IsCustom);

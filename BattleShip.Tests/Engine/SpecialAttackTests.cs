@@ -184,10 +184,25 @@ public sealed class SpecialAttackTests
         Assert.True(result.ComputerShots.Count >= 3);
         Assert.Contains(result.ComputerShots, shot => shot.Target == new Coordinate(4, 4) && shot.Result.Outcome != ShotOutcome.Miss);
         Assert.Contains(result.ComputerShots, shot => shot.Target == new Coordinate(6, 4) && shot.Result.Outcome != ShotOutcome.Miss);
+        // Signale que ces cases viennent d'une attaque spéciale : le front s'en sert pour les
+        // distinguer visuellement d'une simple série de touches en chasse-cible, qui produirait
+        // sinon exactement la même liste de coups à l'écran, sans que rien ne les différencie.
+        Assert.All(result.ComputerShots, shot => Assert.True(shot.SpecialAttack));
         Assert.Equal(0, game.SpecialAttackProgress(Side.Computer));
         // Le navire du joueur n'a que ces trois cases : les couler d'un coup termine la partie.
         Assert.Equal(GamePhase.Finished, game.Phase);
         Assert.Equal(Side.Computer, game.Winner);
+    }
+
+    [Fact]
+    public void Un_tir_normal_de_l_ordinateur_n_est_pas_marque_comme_une_attaque_speciale()
+    {
+        var game = GameStartedByPlayer([new Ship([new(9, 9)])]);
+
+        var result = game.PlayerFire(new(0, 0), new ScriptedTargets(new Coordinate(5, 5)).Next);
+
+        Assert.Single(result.ComputerShots);
+        Assert.False(result.ComputerShots[0].SpecialAttack);
     }
 
     private sealed class ScriptedTargets(params Coordinate[] targets)

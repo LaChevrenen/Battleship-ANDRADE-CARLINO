@@ -147,38 +147,68 @@ Content-Type: application/json
 
 { "column": 0, "row": 0, "expectedVersion": {{fire.response.body.$.state.version}} }
 
+### Attaque spéciale réservée à la partie personnalisée : une partie classique comme "create"
+### ci-dessus n'a plus jamais la règle active, donc plus jamais de jauge à charger. Le reste de
+### cette section rejoue le scénario sur sa propre partie personnalisée, avec le réglage activé.
+
+### Créer une partie personnalisée où l'attaque spéciale est activée : 201
+### Mêmes largeur/hauteur/flotte/contact que le socle classique, seule "specialAttacksEnabled"
+### diffère de ce qu'une requête vide donnerait.
+# @name specialGame
+POST {{api}}/games
+Content-Type: application/json
+
+{ "width": 10, "height": 10, "shipCounts": { "5": 1, "4": 1, "3": 2, "2": 1 }, "allowAdjacentShips": false, "specialAttacksEnabled": true }
+
+### Tirer toute sa flotte au hasard : 200
+# @name specialFleet
+POST {{api}}/games/{{specialGame.response.body.$.id}}/fleet/random
+Content-Type: application/json
+
+{ "expectedVersion": {{specialGame.response.body.$.version}} }
+
+### Démarrer cette partie : 200
+# @name specialStart
+POST {{api}}/games/{{specialGame.response.body.$.id}}/start
+
 ### Attaque spéciale sans jauge : 409 SpecialAttackNotCharged
-### Se charge après 5 tirs acceptés de ce camp ; ce scénario n'en a joué qu'un jusqu'ici.
-POST {{api}}/games/{{create.response.body.$.id}}/shots
+POST {{api}}/games/{{specialGame.response.body.$.id}}/shots
 Content-Type: application/json
 
-{ "column": 3, "row": 3, "expectedVersion": {{fire.response.body.$.state.version}}, "specialAttack": true }
+{ "column": 3, "row": 3, "expectedVersion": {{specialStart.response.body.$.state.version}}, "specialAttack": true }
 
-### Recharger la jauge : quatre tirs de plus (un seul a compté jusqu'ici), la version repart de fire
-### Le refus ci-dessus n'a rien changé : on repart bien de la version de "fire".
+### Premier tir accepté, la jauge n'a pas bougé pour le refus ci-dessus : on repart bien de la
+### version de "specialStart".
+# @name charge1
+POST {{api}}/games/{{specialGame.response.body.$.id}}/shots
+Content-Type: application/json
+
+{ "column": 0, "row": 0, "expectedVersion": {{specialStart.response.body.$.state.version}} }
+
+### Deuxième tir accepté
 # @name charge2
-POST {{api}}/games/{{create.response.body.$.id}}/shots
+POST {{api}}/games/{{specialGame.response.body.$.id}}/shots
 Content-Type: application/json
 
-{ "column": 1, "row": 0, "expectedVersion": {{fire.response.body.$.state.version}} }
+{ "column": 1, "row": 0, "expectedVersion": {{charge1.response.body.$.state.version}} }
 
 ### Troisième tir accepté
 # @name charge3
-POST {{api}}/games/{{create.response.body.$.id}}/shots
+POST {{api}}/games/{{specialGame.response.body.$.id}}/shots
 Content-Type: application/json
 
 { "column": 2, "row": 0, "expectedVersion": {{charge2.response.body.$.state.version}} }
 
 ### Quatrième tir accepté
 # @name charge4
-POST {{api}}/games/{{create.response.body.$.id}}/shots
+POST {{api}}/games/{{specialGame.response.body.$.id}}/shots
 Content-Type: application/json
 
 { "column": 3, "row": 0, "expectedVersion": {{charge3.response.body.$.state.version}} }
 
 ### Cinquième tir accepté du joueur : la jauge est pleine (playerSpecialAttackProgress = 5)
 # @name charge5
-POST {{api}}/games/{{create.response.body.$.id}}/shots
+POST {{api}}/games/{{specialGame.response.body.$.id}}/shots
 Content-Type: application/json
 
 { "column": 4, "row": 0, "expectedVersion": {{charge4.response.body.$.state.version}} }
@@ -189,7 +219,7 @@ Content-Type: application/json
 ### été rejoué deux fois en vrai contre une instance isolée, une fois avec un touché dans la croix,
 ### une fois entièrement à l'eau. Dans les deux cas : 200, et playerSpecialAttackProgress retombé
 ### à 0 dans la partie relue ensuite.
-POST {{api}}/games/{{create.response.body.$.id}}/shots
+POST {{api}}/games/{{specialGame.response.body.$.id}}/shots
 Content-Type: application/json
 
 { "column": 6, "row": 6, "expectedVersion": {{charge5.response.body.$.state.version}}, "specialAttack": true }

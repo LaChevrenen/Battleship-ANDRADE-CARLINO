@@ -17,7 +17,7 @@
 {
     <p role="alert">@error</p>
     <button class="new-game-button new-game-button-secondary" data-sound="primary" @onclick="NewGame">
-        <span class="new-game-icon" aria-hidden="true">+</span>
+        <span class="new-game-icon new-game-icon-plus" aria-hidden="true"></span>
         <span>Nouvelle partie</span>
     </button>
 }
@@ -46,7 +46,7 @@ else
                     <span><strong>@FormatDuration(state.Statistics.DurationSeconds)</strong> durée</span>
                 </div>
                 <button class="new-game-button new-game-button-secondary" data-sound="primary" @onclick="NewGame">
-                    <span class="new-game-icon" aria-hidden="true">+</span>
+                    <span class="new-game-icon new-game-icon-plus" aria-hidden="true"></span>
                     <span>Nouvelle partie</span>
                 </button>
             </div>
@@ -222,11 +222,12 @@ else
         <p class="game-feedback game-feedback-refusal" role="alert">@unreachable</p>
     }
 
-    @if (showStartBanner)
+    @if (startCountdownText is not null)
     {
         <div class="start-banner" aria-hidden="true">
-            <span class="start-banner-icon">⚓</span>
-            <span class="start-banner-text">Combat engagé !</span>
+            <span class="start-banner-text @(startCountdownText == FireWord ? "fire" : null)" @key="startCountdownText">
+                @startCountdownText
+            </span>
         </div>
     }
 
@@ -312,6 +313,7 @@ else
                           Hits="state.Opponent.Hits"
                           AnimatedCell="animatedCell"
                           AnimatedOutcome="animatedOutcome"
+                          AnimatedSpecial="animatedSpecial"
                           Preview="OpponentPreview"
                           PreviewValid="true"
                           RootCssClass="@OpponentGridClass"
@@ -345,6 +347,7 @@ else
                       Hits="state.Player.Hits"
                       AnimatedCell="animatedCell"
                       AnimatedOutcome="animatedOutcome"
+                      AnimatedSpecial="animatedSpecial"
                       LastComputerShot="lastComputerShot"
                       Preview="preview"
                       PreviewValid="previewValid"
@@ -379,6 +382,7 @@ else
     private Coordinate? hoveredCell;
     private Coordinate? animatedCell;
     private ShotOutcome? animatedOutcome;
+    private bool animatedSpecial;
 
     // Persiste au-delà de l'animation d'impact, contrairement à animatedCell : sert de repère
     // durable sur ma grille, pas d'un simple flash.
@@ -388,9 +392,18 @@ else
     // est pleine, il n'y a rien d'autre à armer.
     private Coordinate? specialAttackHover;
 
-    // Bannière « Combat engagé ! » affichée pendant le jingle de début de partie.
-    private bool showStartBanner;
-    private static readonly TimeSpan StartBannerDuration = TimeSpan.FromMilliseconds(1100);
+    // Décompte affiché au centre de l'écran au démarrage : null tant qu'aucune manche n'est en
+    // cours. Chaque étape a son propre son (PlayStartSequence) et sa propre durée d'affichage.
+    private string? startCountdownText;
+    private const string FireWord = "Feu !";
+
+    private static readonly (string Text, TimeSpan Duration)[] StartCountdownSteps =
+    [
+        ("3", TimeSpan.FromMilliseconds(550)),
+        ("2", TimeSpan.FromMilliseconds(550)),
+        ("1", TimeSpan.FromMilliseconds(550)),
+        (FireWord, TimeSpan.FromMilliseconds(650)),
+    ];
 
     // Ne s'applique qu'au tout premier tir de l'ordinateur, quand il commence : sans lui, ce tir
     // peut s'afficher avant que l'écran ait fini de charger, et passe inaperçu. Les tirs suivants,
@@ -793,16 +806,21 @@ else
         starting = false;
     }
 
-    // Task.Delay attend une durée fixe côté écran : Audio.PlayAsync ne fait que lancer le jingle,
-    // il ne rend pas la main quand celui-ci finit de jouer (Web Audio planifie et rend la main
-    // aussitôt). StartBannerDuration doit donc rester au moins aussi longue que le jingle "start".
+    // Task.Delay attend une durée fixe côté écran à chaque étape : Audio.PlayAsync ne fait que
+    // lancer le son, il ne rend pas la main quand celui-ci finit de jouer (Web Audio planifie et
+    // rend la main aussitôt). @key="startCountdownText" sur la bannière force un nouveau nœud DOM
+    // à chaque étape, sinon l'animation CSS ne rejouerait pas pour un simple changement de texte.
     private async Task PlayStartSequence()
     {
-        showStartBanner = true;
-        await InvokeAsync(StateHasChanged);
-        await Audio.PlayAsync("start");
-        await Task.Delay(StartBannerDuration);
-        showStartBanner = false;
+        foreach (var (text, duration) in StartCountdownSteps)
+        {
+            startCountdownText = text;
+            await InvokeAsync(StateHasChanged);
+            await Audio.PlayAsync(text == FireWord ? "start" : "countdown-tick");
+            await Task.Delay(duration);
+        }
+
+        startCountdownText = null;
         await InvokeAsync(StateHasChanged);
     }
 
@@ -829,7 +847,7 @@ else
         if (result.Turn is { } turn)
         {
             var prefix = special ? "Attaque spéciale ! " : string.Empty;
-            await AnimateTurn(turn, prefix + Describe(turn), target);
+            await AnimateTurn(turn, prefix + Describe(turn), target, playerSpecialAttack: special);
             await Audio.PlayAsync(turn.PlayerOutcome == ShotOutcome.Sunk ? "sunk" : turn.PlayerOutcome == ShotOutcome.Hit ? "hit" : "miss");
             if (turn.State.Phase == GamePhase.Finished)
                 await Audio.PlayAsync(turn.State.Winner == Side.Player ? "win" : "lose");
@@ -844,11 +862,13 @@ else
         busy = false;
     }
 
-    private async Task AnimateTurn(TurnDto turn, string finalMessage, Coordinate? playerTarget = null, TimeSpan? firstComputerShotDelay = null)
+    private async Task AnimateTurn(TurnDto turn, string finalMessage, Coordinate? playerTarget = null,
+        TimeSpan? firstComputerShotDelay = null, bool playerSpecialAttack = false)
     {
         var previous = state!;
         animatedCell = playerTarget;
         animatedOutcome = turn.PlayerOutcome;
+        animatedSpecial = playerSpecialAttack;
         state = turn.State with
         {
             Phase = previous.Phase,
@@ -873,6 +893,7 @@ else
             var shot = turn.ComputerShots[index];
             animatedCell = shot.Target;
             animatedOutcome = shot.Outcome;
+            animatedSpecial = shot.SpecialAttack;
             // Avance avec chaque tir révélé ; se stabilise sur le dernier une fois la série finie.
             lastComputerShot = shot.Target;
             var player = state.Player;
@@ -900,7 +921,13 @@ else
         }
 
         state = turn.State;
-        message = finalMessage;
+        // Un tir simple et une attaque spéciale de l'ordinateur produisent tous deux une liste de
+        // plusieurs cases (chasse-cible qui enchaîne les touches, ou croix de 5) : sans ce signal
+        // explicite venu du contrat, rien à l'écran ne les distinguait, ce qui donnait l'impression
+        // que l'IA ne se servait jamais de son attaque spéciale alors qu'elle la chargeait bien.
+        message = turn.ComputerShots.Any(shot => shot.SpecialAttack)
+            ? $"{finalMessage} L'ordinateur a utilisé son attaque spéciale !"
+            : finalMessage;
         await InvokeAsync(StateHasChanged);
     }
 

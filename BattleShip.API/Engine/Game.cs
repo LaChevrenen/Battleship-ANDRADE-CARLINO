@@ -7,7 +7,8 @@ public sealed class Game(
     Board computerBoard,
     Random random,
     AiDifficulty difficulty = AiDifficulty.Normal,
-    bool specialAttacksEnabled = true)
+    bool specialAttacksEnabled = true,
+    bool isCustom = false)
 {
     // Lâchée au démarrage : sans elle, plus rien ne peut modifier la flotte du joueur.
     private FleetUnderConstruction? fleetUnderConstruction = playerFleet;
@@ -22,8 +23,15 @@ public sealed class Game(
     public bool AllowAdjacentShips { get; } = playerFleet.AllowAdjacentShips;
 
     // Même raison que AllowAdjacentShips ci-dessus : capturé une fois, lisible à tout moment de la
-    // partie. Classique : toujours activées (valeur par défaut). Personnalisée : au choix.
+    // partie. Classique : jamais activées (CreateWithRandomComputerFleet le force à faux).
+    // Personnalisée : au choix, activées par défaut ici — TryCreate reçoit toujours une valeur
+    // explicite du binôme, ce défaut ne sert qu'aux constructions directes de Game dans les tests.
     public bool SpecialAttacksEnabled { get; } = specialAttacksEnabled;
+
+    // Explicite plutôt que déduit d'un autre réglage : une partie personnalisée peut très bien
+    // reprendre une grille 10x10, la flotte par défaut et les attaques spéciales désactivées, ce
+    // qui la rendrait sinon indiscernable d'une partie classique.
+    public bool IsCustom { get; } = isCustom;
 
     public GamePhase Phase { get; private set; } = GamePhase.Setup;
 
@@ -45,11 +53,13 @@ public sealed class Game(
     public bool HasSpecialAttackCharge(Side side) => SpecialAttackProgress(side) >= GameRules.SpecialAttackChargeInterval;
 
     // Seul l'ordinateur est placé à la création : le joueur pose sa flotte lui-même, ou la tire au hasard.
+    // Attaques spéciales exclues du socle classique : réservées à la partie personnalisée.
     public static Game CreateWithRandomComputerFleet(Random random, AiDifficulty difficulty = AiDifficulty.Normal) =>
         new(new FleetUnderConstruction(GameRules.GridSize, GameRules.GridSize, GameRules.DefaultShipLengths),
             PlaceDefaultFleet(random),
             random,
-            difficulty);
+            difficulty,
+            specialAttacksEnabled: false);
 
     // Partie personnalisée : contrairement à la flotte par défaut, rien ne garantit qu'une
     // configuration tienne sur sa grille. null n'est pas une erreur — c'est la réponse prévue par
@@ -67,7 +77,8 @@ public sealed class Game(
             new Board(width, height, placement.Ships),
             random,
             difficulty,
-            specialAttacksEnabled);
+            specialAttacksEnabled,
+            isCustom: true);
     }
 
     // Le niveau se choisit pendant la préparation seulement : une fois la partie commencée, le
@@ -207,7 +218,7 @@ public sealed class Game(
             {
                 var area = FireArea(Side.Computer, target);
                 if (area.IsAccepted)
-                    shots.AddRange(area.Cells.Select(cell => new ComputerShot(cell.Target, cell.Result)));
+                    shots.AddRange(area.Cells.Select(cell => new ComputerShot(cell.Target, cell.Result, SpecialAttack: true)));
             }
             else
             {

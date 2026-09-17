@@ -50,7 +50,8 @@ public sealed class GameStore
                             entry.Game.Game.Phase,
                             entry.Game.Game.Winner,
                             entry.Game.PlayerShotCount,
-                            DurationSeconds(entry.Game));
+                            DurationSeconds(entry.Game),
+                            entry.Game.Game.IsCustom);
                     }
                 })
                 .OrderByDescending(summary => summary.CreatedAt)];

@@ -25,12 +25,38 @@ Ouvrir `http://localhost:5274/`, puis les outils de développement, onglet Rése
 
 À vérifier :
 
-- le bouton **Nouvelle partie** ;
+- les boutons **Partie classique** et **Partie personnalisée**, l'un à côté de l'autre, alignés
+  sur la même ligne de base ;
+- le rond de chacun des deux boutons est bien centré (croix pour Partie classique, ⚙ pour
+  personnalisée) — pas décalé vers un bord ;
 - la liste des parties, vide au premier lancement ;
 - dans la barre latérale, les cases **Sons** et **Musique**, cochées ;
 - une nappe musicale calme démarre au premier clic — les navigateurs interdisent tout son avant
   un geste de l'utilisateur, donc elle ne peut pas partir avant ;
 - onglet Réseau : `GET /games` en `200`.
+
+## 1bis. Partie personnalisée : le formulaire
+
+Cliquer sur **Partie personnalisée**.
+
+À vérifier :
+
+- le texte sous le titre change : il ne parle plus d'une grille fixe de 10×10, mais explique que
+  cette partie se configure ;
+- les champs **Largeur** et **Hauteur** réagissent à la molette de la souris quand le curseur est
+  dessus (survol, sans clic) : vers le haut augmente, vers le bas diminue, dans les bornes 5–15 ;
+  la page ne défile pas pendant ce temps.
+
+1. Réduire la largeur ou la hauteur, ou augmenter le nombre de navires, jusqu'à ce que le total de
+   cases de la flotte dépasse le nombre de cases de la grille (par exemple 5×5 avec la flotte par
+   défaut, 17 cases pour 25 cases de grille : réduire encore, ou ajouter des navires).
+
+À vérifier : un message d'avertissement apparaît **immédiatement**, sans avoir cliqué sur
+**Créer la partie**, et ce bouton devient inactif. Remettre une configuration plausible : le
+message disparaît et le bouton redevient actif. Ce message ne couvre que le cas où la flotte ne
+tient mathématiquement pas (plus de cases de navires que de cases de grille) ; une configuration
+qui tient en nombre mais que le placement ne parvient pas à disposer reste détectée par le serveur
+seul, en `409 FleetDoesNotFit`, au moment de créer la partie.
 
 ## 2. Créer une partie et poser sa flotte
 
@@ -119,8 +145,14 @@ l'écran.
 
 Cliquer sur **Commencer**.
 
-À vérifier : la phase passe à `InProgress`, le port et la barre de préparation disparaissent, et
-si l'ordinateur a commencé, ses tirs d'ouverture sont visibles sur ma grille.
+À vérifier :
+
+- un décompte **3, 2, 1, Feu !** s'affiche au centre de l'écran, par-dessus tout le reste, chaque
+  chiffre avec son propre son ; « Feu ! » se distingue des chiffres (couleur, son plus marqué) ;
+- pendant tout le décompte, aucun tir n'est encore joué ;
+- une fois le décompte terminé, la phase passe à `InProgress`, le port et la barre de préparation
+  disparaissent, et si l'ordinateur a commencé, ses tirs d'ouverture sont visibles sur ma grille —
+  le premier arrive environ une seconde après la fin du décompte, pas instantanément.
 
 Puis cliquer sur une case de **ma** grille : rien ne se passe. Un placement après le démarrage
 serait refusé avec `NotInSetup`, mais l'écran n'envoie même plus la demande.
@@ -163,7 +195,8 @@ Le front n'anticipe rien : tant que le serveur n'a pas répondu, aucune case ne 
 1. Appuyer sur `F5` sur `/partie/{identifiant}` : la partie revient dans le même état, tirs
    compris. L'identifiant vient de l'URL, et l'état est relu par gRPC-Web.
 2. Revenir à l'accueil : la partie apparaît dans la liste, avec son état, sa date, son nombre de
-   tirs et sa durée. **Reprendre** rouvre son URL.
+   tirs et sa durée, ainsi qu'un badge **Classique** ou **Personnalisée** selon comment elle a été
+   créée. **Reprendre** rouvre son URL.
 3. Supprimer une partie depuis l'accueil, puis ouvrir son ancienne URL.
 
 À vérifier : `DELETE /games/{id}` répond `204`, la ligne disparaît, et l'ancienne URL affiche
@@ -237,10 +270,11 @@ tant que l'API tourne.
 
 ## 14. Attaque spéciale
 
-Sans avoir touché à **Activer les attaques spéciales** dans le formulaire de partie personnalisée
-(coché par défaut), la règle est active. Dès que la partie est `InProgress`, deux badges ronds
-apparaissent : un en bas à gauche de la grille adverse (ma jauge), un en bas à gauche de ma grille
-(celle de l'ordinateur) — chacun avec un symbole ✦ et cinq points.
+Réservée à la partie personnalisée : sur l'accueil, ouvrir **Partie personnalisée** et vérifier que
+**Activer les attaques spéciales** est cochée par défaut, sans y toucher. Dès que la partie
+personnalisée est `InProgress`, deux badges ronds apparaissent : un en bas à gauche de la grille
+adverse (ma jauge), un en bas à gauche de ma grille (celle de l'ordinateur) — chacun avec un
+symbole ✦ et cinq points.
 
 1. Tirer sur la grille adverse, à l'eau ou touché peu importe, jusqu'à ce que les cinq points du
    badge soient remplis. Compter uniquement mes propres tirs acceptés ; les tirs de l'ordinateur ne
@@ -271,16 +305,30 @@ tirée dans la croix ne s'allume pas non plus.
   jauge se réinitialise que l'attaque touche ou non ;
 - onglet Réseau : `POST /games/{id}/shots` en `200`, corps de requête avec `"specialAttack": true`.
 
-4. Observer le badge de l'ordinateur au fil de la partie.
+4. Observer le badge de l'ordinateur au fil de la partie, jusqu'à ce qu'il se vide de lui-même.
 
-À vérifier : ses points se remplissent à chacun de ses tirs, le symbole passe à l'orange une fois
-les cinq remplis, puis tout retombe à vide quand l'ordinateur l'utilise — visible aux tours
-suivants, sans qu'aucune action ne soit requise côté joueur.
+À vérifier :
+
+- ses points se remplissent à chacun de ses tirs, le symbole passe à l'orange une fois les cinq
+  remplis, puis tout retombe à vide quand l'ordinateur l'utilise — sans qu'aucune action ne soit
+  requise côté joueur ;
+- au tour où il l'utilise, les cases qu'il révèle sur **ma** grille flashent en **orange**
+  (`tir-special-anime`) plutôt qu'en ambre comme un tir simple ;
+- le message affiché se termine par `L'ordinateur a utilisé son attaque spéciale !`. Sans ce
+  message et cette couleur distincte, une attaque spéciale de l'ordinateur et une série de touches
+  en chasse-cible se ressemblent trait pour trait à l'écran — c'était le problème signalé.
 
 5. Décocher **Activer les attaques spéciales** en créant une partie personnalisée, puis jouer.
 
 À vérifier : aucun badge n'apparaît sur aucune des deux grilles, et la section « Attaque spéciale »
 du panneau de règles (`?`) n'apparaît pas non plus.
+
+6. Depuis l'accueil, cliquer sur **Partie classique** plutôt que sur **Partie personnalisée**, puis
+   jouer quelques tirs.
+
+À vérifier : même chose que l'étape précédente — aucun badge, aucune section « Attaque spéciale »
+dans le panneau de règles. La règle n'existe plus du tout en partie classique, elle n'y est pas
+seulement désactivée par défaut.
 
 Vérifié en vrai contre l'API (pas le navigateur, l'IA n'en a pas) : une charge à 5 tirs suivie
 d'une attaque spéciale répond `200`, résout la croix demandée et remet la jauge à 0 — voir

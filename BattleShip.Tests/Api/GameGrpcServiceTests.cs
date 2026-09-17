@@ -50,9 +50,13 @@ public sealed class GameGrpcServiceTests(WebApplicationFactory<Program> factory)
     [Fact]
     public async Task L_etat_grpc_web_transporte_la_jauge_d_attaque_speciale()
     {
-        // Graine documentée dans GameEndpointsTests : l'ordinateur commence et rate en (8,4), puis
-        // un tir du joueur en (0,0) est à l'eau et l'ordinateur tire une deuxième fois. Sa jauge est
-        // donc garantie non nulle ici, ce qui permet de détecter une jauge adverse oubliée côté câble.
+        // Graine documentée dans GameEndpointsTests, reproduite ici par une partie personnalisée
+        // dont les réglages reprennent exactement ceux du socle classique (seule façon d'y activer
+        // les attaques spéciales désormais) : l'ordinateur commence et rate en (8,4), puis un tir du
+        // joueur en (0,0) est à l'eau et l'ordinateur tire une deuxième fois. Sa jauge est donc
+        // garantie non nulle ici, ce qui permet de détecter une jauge adverse oubliée côté câble.
+        // Rejoué en vrai contre une instance de test pour confirmer que la graine se comporte encore
+        // à l'identique une fois passée par la création personnalisée plutôt que par POST /games.
         const int seed = 20260915;
         // Le client gRPC doit viser ce même hôte à graine fixe : factory.CreateGrpcClient() vise le
         // hôte partagé de la classe, dont le magasin de parties en mémoire est distinct de celui-ci.
@@ -60,7 +64,15 @@ public sealed class GameGrpcServiceTests(WebApplicationFactory<Program> factory)
             .WithWebHostBuilder(builder => builder.ConfigureTestServices(services => services.AddSingleton(new Random(seed))));
         var http = seededFactory.CreateClient();
 
-        var created = await (await http.PostAsync("/games", null)).Content.ReadFromJsonAsync<JsonElement>();
+        var creationBody = new
+        {
+            width = 10,
+            height = 10,
+            shipCounts = new Dictionary<int, int> { [5] = 1, [4] = 1, [3] = 2, [2] = 1 },
+            allowAdjacentShips = false,
+            specialAttacksEnabled = true,
+        };
+        var created = await (await http.PostAsJsonAsync("/games", creationBody)).Content.ReadFromJsonAsync<JsonElement>();
         var id = created.GetProperty("id").GetString()!;
         var version = created.GetProperty("version").GetInt32();
 
