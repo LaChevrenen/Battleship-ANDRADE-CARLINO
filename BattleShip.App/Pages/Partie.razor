@@ -197,7 +197,7 @@ else
                       OnCellClick="PlaceShip"
                       OnCellHover="ShowPreview"
                       OnLeave="ClearHover"
-                      OnWheel="RotateSelectedShip"
+                      OnWheel="RotateHeldShip"
                       RootCssClass="@(state.Phase == GamePhase.Setup ? "primary-grid" : "compact")" />
             </div>
         </div>
@@ -218,10 +218,12 @@ else
     private bool musicEnabled = true;
     private int? selectedLength;
     private int? selectedPortIndex;
-    private IReadOnlyList<Coordinate>? selectedPlacedShip;
     private Orientation orientation = Orientation.Horizontal;
     private IReadOnlyCollection<Coordinate> preview = [];
     private bool previewValid;
+
+    // Dernière case de ma grille survolée, ou null si la souris est sortie de la grille.
+    private Coordinate? hoveredCell;
     private Coordinate? animatedCell;
     private ShotOutcome? animatedOutcome;
 
@@ -286,31 +288,18 @@ else
         var length = state.Player.RemainingShipLengths[index];
         selectedLength = length;
         selectedPortIndex = index;
-        selectedPlacedShip = null;
         preview = [];
         await RefreshValidOrigins();
     }
 
-    private async Task RotateSelectedShip(Coordinate cell)
+    // La molette n'agit que sur le navire qu'on a en main. Un navire posé sur la grille ne pivote
+    // jamais sous la molette : il faut d'abord le reprendre en cliquant dessus.
+    private async Task RotateHeldShip(Coordinate _)
     {
-        if (state?.Phase != GamePhase.Setup)
+        if (state?.Phase != GamePhase.Setup || selectedLength is null)
             return;
 
-        if (selectedPlacedShip is { } selectedShip)
-        {
-            if (!selectedShip.Contains(cell))
-                return;
-
-            await Prepare(version => Api.RotateShipAsync(Guid.Parse(Id), cell, version));
-            selectedPlacedShip = state?.Player.Ships.FirstOrDefault(ship => ship.Contains(cell));
-            preview = selectedPlacedShip is null ? [] : [.. selectedPlacedShip];
-            previewValid = selectedPlacedShip is not null;
-            await InvokeAsync(StateHasChanged);
-            return;
-        }
-
-        if (selectedLength is not null)
-            await ToggleOrientation();
+        await ToggleOrientation();
     }
 
     private async Task ToggleOrientation()
@@ -321,6 +310,11 @@ else
         orientation = orientation == Orientation.Horizontal ? Orientation.Vertical : Orientation.Horizontal;
         preview = [];
         await RefreshValidOrigins();
+
+        // La souris est restée sur la même case : aucun survol ne sera émis, c'est donc ici qu'il
+        // faut redessiner, sinon l'aperçu ne revient qu'en changeant de case.
+        if (hoveredCell is { } cell)
+            ShowPreview(cell);
     }
 
     private IReadOnlyList<Coordinate> PreviewCellsForSelectedShip(Coordinate origin, int length)
@@ -334,20 +328,13 @@ else
     // fait qu'une appartenance à la liste des origines valides qu'il a reçue.
     private void ShowPreview(Coordinate origin)
     {
+        // Retenue avant tout le reste : c'est elle qui permet de redessiner l'aperçu après une
+        // rotation, alors que la souris n'a pas changé de case et n'émettra donc aucun survol.
+        hoveredCell = origin;
+
         if (state?.Phase != GamePhase.Setup)
         {
             preview = [];
-            return;
-        }
-
-        if (selectedPlacedShip is { } selectedShip)
-        {
-            var nextPreview = PreviewCellsForShip(origin, selectedShip.Count, ResolveOrientation(selectedShip));
-            if (preview.SequenceEqual(nextPreview) && previewValid)
-                return;
-
-            preview = nextPreview;
-            previewValid = true;
             return;
         }
 
@@ -368,6 +355,7 @@ else
 
     private void ClearHover()
     {
+        hoveredCell = null;
         preview = [];
     }
 
@@ -398,34 +386,15 @@ else
         }
     }
 
-    // Un clic sur ma grille pose le navire choisi, ou retire celui qui occupe déjà la case.
+    // Un clic sur ma grille pose le navire qu'on a en main, ou reprend celui qui occupe la case.
     private async Task PlaceShip(Coordinate origin)
     {
         if (busy || state is null || state.Phase != GamePhase.Setup)
             return;
 
-        if (selectedPlacedShip is { } selectedShip)
+        if (state.Player.Ships.FirstOrDefault(ship => ship.Contains(origin)) is { } placed)
         {
-            var source = GrabCell(selectedShip);
-            var targetOrientation = ResolveOrientation(selectedShip);
-            selectedLength = null;
-            selectedPlacedShip = null;
-            preview = [];
-            await Prepare(version => Api.MoveShipAsync(Guid.Parse(Id), source, origin, targetOrientation, version));
-            return;
-        }
-
-        if (OwnShipCells.Contains(origin))
-        {
-            var ship = state.Player.Ships.FirstOrDefault(s => s.Contains(origin));
-            if (ship is null)
-                return;
-
-            selectedLength = null;
-            selectedPortIndex = null;
-            selectedPlacedShip = ship;
-            preview = [.. ship];
-            previewValid = true;
+            await PickUp(placed, origin);
             return;
         }
 
@@ -438,11 +407,41 @@ else
         }
     }
 
-    private IReadOnlyList<Coordinate> PreviewCellsForShip(Coordinate origin, int length, Orientation shipOrientation)
+    // Reprendre un navire posé, c'est le retirer de la grille et le remettre en main : il revient
+    // dans l'état d'un navire à poser, avec l'orientation qu'il avait. Rien n'est « déplacé » ni
+    // « pivoté » sur le plateau — il n'y est plus tant qu'on ne l'a pas reposé.
+    private async Task PickUp(IReadOnlyList<Coordinate> ship, Coordinate cell)
     {
-        return [.. Enumerable.Range(0, length).Select(offset => shipOrientation == Orientation.Horizontal
-            ? origin with { Column = origin.Column + offset }
-            : origin with { Row = origin.Row + offset })];
+        var length = ship.Count;
+        var anchor = ShipAnchor(ship);
+
+        await Prepare(version => Api.RemoveShipAsync(Guid.Parse(Id), cell, version));
+
+        // Retrait refusé : il n'y a rien en main, et l'écran n'a pas bougé.
+        if (state is null || !state.Player.RemainingShipLengths.Contains(length))
+            return;
+
+        selectedLength = length;
+        selectedPortIndex = IndexOfLength(state.Player.RemainingShipLengths, length);
+        orientation = ResolveOrientation(ship);
+
+        await RefreshValidOrigins();
+
+        // Le tracé réapparaît tout de suite à l'endroit d'où le navire vient, sans bouger la souris.
+        // Sa couleur reste celle que le serveur dicte : on interroge la liste qu'il vient d'envoyer.
+        preview = [.. ship];
+        previewValid = validOrigins.Contains(anchor);
+    }
+
+    private static int? IndexOfLength(IReadOnlyList<int> lengths, int length)
+    {
+        for (var index = 0; index < lengths.Count; index++)
+        {
+            if (lengths[index] == length)
+                return index;
+        }
+
+        return null;
     }
 
     private static Orientation ResolveOrientation(IReadOnlyList<Coordinate> ship)
@@ -451,17 +450,6 @@ else
     private static Coordinate ShipAnchor(IReadOnlyList<Coordinate> ship) =>
         ship.OrderBy(cell => cell.Row).ThenBy(cell => cell.Column).First();
 
-    private static Coordinate GrabCell(IReadOnlyList<Coordinate> ship)
-    {
-        if (ship.Count == 1)
-            return ship[0];
-
-        var averageColumn = ship.Average(cell => cell.Column);
-        var averageRow = ship.Average(cell => cell.Row);
-        return ship
-            .OrderBy(cell => Math.Abs(cell.Column - averageColumn) + Math.Abs(cell.Row - averageRow))
-            .First();
-    }
 
     private Task PlaceFleetAtRandom() => Prepare(version => Api.PlaceFleetAtRandomAsync(Guid.Parse(Id), version));
 
@@ -507,12 +495,6 @@ else
             || index >= state.Player.RemainingShipLengths.Count
             || state.Player.RemainingShipLengths[index] != selectedLength)
             selectedPortIndex = null;
-
-        if (selectedPlacedShip is not null && state is not null)
-        {
-            var liveShip = state.Player.Ships.FirstOrDefault(ship => ship.SequenceEqual(selectedPlacedShip));
-            selectedPlacedShip = liveShip ?? null;
-        }
     }
 
     private async Task Start()
