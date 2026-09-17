@@ -31,13 +31,36 @@ public static class GameEndpoints
         return app;
     }
 
-    private static Created<GameStateDto> Create(GameStore store, Random random)
+    // Corps absent : partie classique, comportement inchangé. Corps présent : partie personnalisée,
+    // avec deux façons distinctes d'échouer — une entrée mal formée (400) et une configuration que
+    // le serveur ne parvient pas à placer (409), comme l'annonce docs/REGLES.md.
+    private static async Task<Results<Created<GameStateDto>, ValidationProblem, Conflict<ProblemDetails>>> Create(
+        GameCreationRequest? request, IValidator<GameCreationRequest> validator, GameStore store, Random random)
     {
-        var state = store.Add(
-            Game.CreateWithRandomComputerFleet(random),
-            GameDtoMapper.ToStateDto);
-        return TypedResults.Created($"/games/{state.Id}", state);
+        if (request is null)
+        {
+            var classic = store.Add(Game.CreateWithRandomComputerFleet(random), GameDtoMapper.ToStateDto);
+            return TypedResults.Created($"/games/{classic.Id}", classic);
+        }
+
+        var validation = await validator.ValidateAsync(request);
+        if (!validation.IsValid)
+            return TypedResults.ValidationProblem(validation.ToDictionary());
+
+        var lengths = ExpandShipCounts(request.ShipCounts!);
+        var game = Game.TryCreate(request.Width!.Value, request.Height!.Value, lengths, request.AllowAdjacentShips!.Value, random);
+        if (game is null)
+            return TypedResults.Conflict(Rejection(
+                "FleetDoesNotFit", "Cette flotte ne tient pas sur cette grille avec ce réglage de contact."));
+
+        var custom = store.Add(game, GameDtoMapper.ToStateDto);
+        return TypedResults.Created($"/games/{custom.Id}", custom);
     }
+
+    // Longueur -> quantité devient une liste plate : le moteur ne connaît que des longueurs de navires,
+    // pas la notion de « quantité par taille », qui reste un détail du contrat HTTP.
+    private static IReadOnlyList<int> ExpandShipCounts(IReadOnlyDictionary<int, int> counts) =>
+        [.. counts.SelectMany(pair => Enumerable.Repeat(pair.Key, pair.Value))];
 
     private static Ok<IReadOnlyList<GameSummaryDto>> List(GameStore store) =>
         TypedResults.Ok(store.ListSummaries());

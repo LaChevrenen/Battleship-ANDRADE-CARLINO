@@ -33,6 +33,7 @@ builder.Services.AddSingleton<IValidator<RotateShipRequest>, RotateShipRequestVa
 builder.Services.AddSingleton<IValidator<ChangeDifficultyRequest>, ChangeDifficultyRequestValidator>();
 builder.Services.AddSingleton<IValidator<MoveShipRequest>, MoveShipRequestValidator>();
 builder.Services.AddSingleton<IValidator<PlacementOriginsRequest>, PlacementOriginsRequestValidator>();
+builder.Services.AddSingleton<IValidator<GameCreationRequest>, GameCreationRequestValidator>();
 builder.Services.AddGrpc();
 builder.Services.AddSingleton<IValidator<GetGameRequest>, GetGameRequestValidator>();
 
