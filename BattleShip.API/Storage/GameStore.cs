@@ -48,10 +48,23 @@ public sealed class GameStore
                             entry.Game.Id,
                             entry.Game.CreatedAt,
                             entry.Game.Game.Phase,
-                            entry.Game.Game.Winner);
+                            entry.Game.Game.Winner,
+                            entry.Game.PlayerShotCount,
+                            DurationSeconds(entry.Game));
                     }
                 })
                 .OrderByDescending(summary => summary.CreatedAt)];
+    }
+
+    public bool TryRemove(Guid id) => games.TryRemove(id, out _);
+
+    private static int? DurationSeconds(StoredGame game)
+    {
+        if (game.StartedAt is not { } startedAt)
+            return null;
+
+        var end = game.FinishedAt ?? DateTimeOffset.UtcNow;
+        return Math.Max(0, (int)(end - startedAt).TotalSeconds);
     }
 
     private sealed record Entry(StoredGame Game, Lock Gate);

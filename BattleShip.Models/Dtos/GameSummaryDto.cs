@@ -4,4 +4,6 @@ public sealed record GameSummaryDto(
     Guid Id,
     DateTimeOffset CreatedAt,
     GamePhase Phase,
-    Side? Winner);
+    Side? Winner,
+    int PlayerShotCount,
+    int? DurationSeconds);
