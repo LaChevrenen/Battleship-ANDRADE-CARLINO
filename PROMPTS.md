@@ -878,7 +878,7 @@
     `e6a4956` (écran de préparation), `efdc119` (aperçu corrigé et procédure manuelle).
   - Limites :
 
-## 2026-09-16 — Habillage visuel et ergonomie (en cours)
+## 2026-09-16 — Habillage visuel et ergonomie
 
 - Outil / modèle si connu :
   - Claude Code (extension VS Code), modèle Claude Opus 5 : cadrage, options, implémentation.
@@ -1108,3 +1108,195 @@
 - Preuves reproductibles et limites : la vérification audio et le rendu exact de la rotation ont
   été compilés mais pas automatisés dans un navigateur. Les tests de rotation ont été adaptés au
   nouveau contrat de pivot ; un test indépendant de placement conserve un écart `Overlap`/`AdjacentShip`.
+
+## 2026-09-17 — Reprise en main des navires et remise au vert de la suite
+
+- Outil / modèle si connu :
+  - Claude Code (extension VS Code), modèle Claude Opus 5 : diagnostic, réécriture du geste de
+    placement, correction des tests, mutations.
+- Contexte : après les phases menées avec GitHub Copilot, l'écran de préparation empilait trois
+  états — navire du port choisi, navire posé sélectionné, navire en déplacement — et la rotation
+  d'un navire posé se comportait mal. `HEAD` ne compilait plus, et deux tests étaient rouges.
+- Prompt réellement utilisé :
+  1. Les trois défauts signalés :
+     ```text
+     bah avant de faire ca actuellement y'a 2 bugs - le tracé du bateau ne réapparaît pas
+     immédiatement autour de la case pivot, sans changer de case.
+     Et je ne veux pas que quand on passe la molette sur un bateau posé que ca change sa rotation !
+     Quand je resélectionne un bateau il ne peut plus rotate
+     ```
+  2. Le geste attendu, en réponse à une question à choix de Claude Code :
+     ```text
+     on clique sur le bateau pour le reselectionner, une fois sélectionner on voit immédiatement
+     son tracé disons avec les cases de couleur. Et apres on peut rotate et le placer ou on veut
+     ensuite mais quand on rotate il n'est jamais fixé, il retourne dans l'état de selection
+     d'avant de tout début quand il fallait le poser pour la 1ere fois
+     ```
+  3. Le défaut restant après la réécriture :
+     ```text
+     tres bien par contre quand je rotate sur une case le tracé n'apparait pas derriere, il faut
+     que je change de case pour qu'il apparaisse c'est un bug
+     ```
+- Questions à choix posées par Claude Code, avec toutes les options :
+  1. « Quel geste doit faire pivoter un navire déjà posé ? » — A. molette sur le navire
+     sélectionné seulement ; B. touche R, jamais la molette ; C. les deux.
+     **Aucune retenue** : le binôme a décrit un quatrième modèle, la reprise en main, qui supprime
+     la question — un navire posé ne pivote plus, il se reprend.
+- Réponse et hypothèses résumées :
+  - Cause commune aux défauts 1 et 3 : la page mémorisait le navire sélectionné sous forme de
+    **liste de cases**, et `KeepSelectionValid` la réaccordait par `SequenceEqual` à chaque
+    relecture d'état. Une rotation changeant les cases, la comparaison échouait et la sélection
+    tombait à `null` : tracé effacé, molette sans effet.
+  - Modèle retenu : cliquer un navire posé appelle `POST …/ships/remove` et le remet en main, avec
+    sa longueur rendue au port et son orientation conservée. Plus aucun état « navire posé
+    sélectionné » ne subsiste dans la page.
+  - Conséquence assumée : `POST …/ships/rotate` et `POST …/ships/move` ne sont plus appelées par
+    l'écran. Elles restent exposées, testées et documentées.
+  - Défaut 3 : `ToggleOrientation` vidait l'aperçu et attendait un survol pour le redessiner, or la
+    souris n'avait pas changé de case. La page retient désormais la dernière case survolée et
+    redessine elle-même après avoir demandé les nouvelles origines valides.
+  - Code mort supprimé : `ShipRotation.Resolve` n'était appelé que par ses trois tests.
+  - Correction de traçabilité : deux commits annoncés par GitHub Copilot —
+    `corrige la reselection des bateaux poses` et `conserve la selection apres rotation` — **n'ont
+    jamais été créés**. Leurs modifications sont restées non commitées dans `Partie.razor` et ont
+    été remplacées par la reprise en main.
+- Décision et justification :
+- Scénario ou commande de vérification :
+  - `dotnet build BattleShip.slnx` et `dotnet test BattleShip.slnx`.
+  - Deux mutations exécutées puis annulées sur `FleetUnderConstruction.TryRotateAt`.
+- Résultat attendu, puis résultat observé :
+  - **`HEAD` ne compilait pas** : `3850eca` appelait `store.TryRemove(id)` dans la route `DELETE`
+    sans que la méthode existe, et cinq commits avaient été empilés au-dessus.
+  - Deux tests rouges, tous deux côté test et non côté code :
+    - `Faire_pivoter_un_navire_le_redresse_autour_de_son_origine` décrivait un contrat abandonné
+      depuis `799e9da` — le pivot est la case visée, pas l'origine. Réécrit en
+      `…_autour_de_la_case_visee`.
+    - `Reprendre_un_navire_pose_avec_une_nouvelle_position_invalide_est_refuse_sans_rien_changer`
+      attendait `AdjacentShip` mais visait une position qui **recouvre** l'autre navire ;
+      `PlacementRules` contrôle le chevauchement avant l'adjacence, donc `Overlap` était juste.
+      Cible déplacée pour tester réellement l'adjacence.
+  - Mutations, sur 551 tests : validation qui n'exclut pas le navire de lui-même → **5 tests
+    rouges** ; retrait avant contrôle → **2 tests rouges**, dont
+    `Assert.Single() Failure: The collection was empty` — le navire disparaissait de la flotte sur
+    un refus, c'est-à-dire l'état intermédiaire que le binôme avait refusé au cadrage.
+  - Suite remise au vert : **561 réussis sur 561**.
+- Erreur que ce contrôle pourrait détecter :
+  - une rotation qui déplacerait le navire au lieu de le faire tourner autour de la case visée ;
+  - une flotte démontée sur un refus ;
+  - un test qui décrit un contrat que le code n'a plus.
+- Preuves reproductibles et limites :
+  - Commits : `3ab4aa0` (build réparé et résumés enrichis), `867e129` (reprise en main),
+    `9366d90` (code mort), `75f8e85` (tests réalignés), `99b7bb1` (documentation),
+    `eae0dff` (texte de la barre de préparation).
+  - Sorties conservées : `.notes/mutations/rotation-m1-sans-exclusion.txt`,
+    `rotation-m2-retrait-avant-controle.txt`.
+  - Limites :
+
+## 2026-09-17 — Règles à l'écran, niveau en préparation, ambiances sonores et correctifs d'affichage
+
+- Outil / modèle si connu :
+  - Claude Code (extension VS Code), modèle Claude Opus 5 : implémentation, contrat serveur, audio,
+    diagnostic CSS.
+- Contexte : l'écran fonctionnait, mais le niveau de l'ordinateur se choisissait sur l'accueil, les
+  réglages audio n'existaient que pendant la préparation, la musique était une suite de notes, et
+  deux défauts d'affichage déplaçaient tout l'écran.
+- Prompt réellement utilisé :
+  1. Le panneau de règles :
+     ```text
+     est ce qu'on pourrait rajouter aussi une parrtie Regles dans la partie quand on clique sur un
+     poirt d'interrogation stp pour expliquer joliement les regles ? Mais genre faut que ce soit
+     concis et clair
+     ```
+  2. Le niveau de l'ordinateur :
+     ```text
+     il faudrait que le choix de difficulté de l'ia soit sur cet écran la stp pas sur l'autre avant
+     de commencer stp
+     ```
+  3. L'audio partout :
+     ```text
+     Il faudrait aussi que les boutons pour la musique et les sons soient accessibles de partout
+     dans le jeu donc qu'ils soient plutot déplaces sur la barre lattérale a gauche pour y avoir
+     acces tout le temps et d'ailleurs je veux tout le temps une musique d'ambiance, meme quand je
+     suis sur le menu et tout de partout qui se lance des qu'on est sur l'appli, je veuc pas des
+     sons mis les uns apres les autres je veux une vraie musique chill
+     ```
+  4. Puis, à l'écoute :
+     ```text
+     j'adore la musique, mais il n'y a pas de musique de combat disons... Est ce que tu pourrais
+     considérablement augmenter le volume stp
+     ```
+     ```text
+     la musique de combat faut que ce soit dynamique et épique, là j'entends la musique du lobby
+     ```
+     ```text
+     les basses crépitent aux oreilles mais sinon tu peux rajouter plus de rythme
+     ```
+  5. Les deux défauts d'affichage :
+     ```text
+     il y a un probleme d'affichage aussi. Regarde la taille du bandeau tu sais avec le niveau ia,
+     le placement, réinitialiser et tout, ce bandeau change de taille quand la flotte est placée ce
+     qui déplace tout l'écrant il faudrait peut etre fixer la taille ou faire en sorte que ca ne
+     pose plus probleme
+     ```
+     ```text
+     d'ailleurs l'affichage des regles est aussi un peu buggé regarde
+     ```
+- Questions à choix posées par Claude Code, avec toutes les options :
+  1. « Où le niveau de l'ordinateur est-il retenu une fois déplacé sur l'écran de partie ? » —
+     A. le serveur le retient dès la préparation, par une route versionnée, et le niveau entre dans
+     l'état, donc dans le DTO et le `.proto` ; B. le niveau part au démarrage, sans route ni champ
+     nouveau, mais un `F5` pendant la préparation le perd. Retenue : **A**.
+- Réponse et hypothèses résumées :
+  - Panneau de règles : sept blocs courts tirés de `docs/REGLES.md`, ouverts par un bouton `?`.
+    Aucune interop JavaScript — un booléen et `@onclick:stopPropagation`. Un commentaire précise
+    que ce panneau explique les règles mais ne les applique pas.
+  - Niveau : `POST /games/{id}/difficulty`, versionnée, refusée après le démarrage. `Difficulty`
+    entre dans `GameStateDto` et dans `battleship.proto` — nécessaire, puisque cet écran relit son
+    état par gRPC-Web et qu'un `F5` aurait sinon perdu le choix. Le paramètre `difficulty` de
+    `POST /games` est supprimé : deux façons de régler la même chose, c'était une de trop.
+  - Audio : un service `GameAudio` enregistré pour la session, réglages rendus par `NavMenu`, donc
+    présents sur toutes les pages. Les 180 lignes de JavaScript quittent `index.html` pour
+    `wwwroot/js/audio.js`.
+  - Musique : la version précédente était un `setInterval` de 420 ms jouant une note, un accord
+    court et un souffle. Remplacée par deux ambiances — nappes tenues de 9 s en ré majeur pour
+    l'accueil et la préparation ; en combat, dents de scie filtrées, ostinato de croches, batterie
+    et bourdon, 96 à la noire. Le passage de l'une à l'autre suit la phase de la partie.
+  - Ordonnancement corrigé : les mesures sont posées à l'avance sur l'horloge audio, et non au
+    déclenchement du minuteur, dont la dérive s'entendrait sur un rythme.
+  - Crépitement du grave : bourdon passé de dent de scie à triangle, grosse caisse filtrée et
+    ramenée de 0,40 à 0,26, caisse claire coupée sous 1400 Hz, et un coupe-bas à 34 Hz sur toute la
+    musique.
+  - Défaut du bandeau : le texte d'état changeait de hauteur, et le libellé du niveau se repliait,
+    ce qui poussait les boutons sur une seconde rangée. Hauteur et colonnes figées.
+  - Défaut du panneau de règles : `@keyframes page-enter` finissait sur `transform: translateY(0)`
+    avec `animation-fill-mode: both`. La valeur restait appliquée, et **un élément qui porte un
+    transform devient le référent des `position: fixed` qu'il contient**. Le panneau et le bouton
+    `?` se calaient donc sur la zone de contenu au lieu de la fenêtre. Corrigé par
+    `transform: none` dans la dernière image-clé.
+- Décision et justification :
+- Scénario ou commande de vérification :
+  - `dotnet build BattleShip.slnx`, `dotnet test BattleShip.slnx`.
+  - Compilations ciblées de `BattleShip.App` vers une sortie isolée quand les serveurs du binôme
+    occupaient les ports.
+  - Route du niveau rejouée contre l'API réelle ; `node --check` sur `audio.js`.
+  - Une mutation exécutée puis annulée : garde « préparation seulement » retirée de
+    `Game.TrySetDifficulty`.
+- Résultat attendu, puis résultat observé :
+  - `dotnet test` : **568 réussis sur 568** (561 + 7 tests du niveau).
+  - Mutation : **1 test rouge**, `Changer_de_niveau_apres_le_demarrage_est_refuse`, avec
+    `Expected: Conflict / Actual: OK`. Sortie dans `.notes/mutations/difficulte-sans-garde.txt`.
+  - Contre l'API réelle : `creation : niveau=Normal version=0`, `changement : niveau=Hard
+    version=1`, `relecture : niveau=Hard`.
+  - `api.http` rejoué : rotation, rotation inverse, déplacement, retrait, tirage aléatoire et
+    réinitialisation conformes ; `409 NoShipHere` sur une case vide ; `204` puis `404` sur la
+    suppression.
+- Erreur que ce contrôle pourrait détecter :
+  - un niveau modifié après le démarrage ;
+  - un niveau perdu au rechargement, faute d'être dans le contrat gRPC ;
+  - un `position: fixed` calé sur autre chose que la fenêtre.
+- Preuves reproductibles et limites :
+  - Commits : `a272ffd` (panneau de règles), `204b858` (niveau en préparation),
+    `bbe0a70` (audio partout), `8c6d7d1` (ambiance de combat), `97eebc2` (défauts d'affichage).
+  - **Rien de l'audio ni du rendu n'est couvert par un test**, et rien n'a été écouté ni vu par
+    Claude Code. Ces points se vérifient à la main avec `docs/VERIFICATION-MANUELLE.md`.
+  - Limites :
