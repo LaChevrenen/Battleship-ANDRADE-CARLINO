@@ -16,7 +16,7 @@
 @if (error is not null)
 {
     <p role="alert">@error</p>
-    <button class="new-game-button new-game-button-secondary" @onclick="NewGame">
+    <button class="new-game-button new-game-button-secondary" data-sound="primary" @onclick="NewGame">
         <span class="new-game-icon" aria-hidden="true">+</span>
         <span>Nouvelle partie</span>
     </button>
@@ -43,7 +43,7 @@ else
                 <span><strong>@FormatDuration(state.Statistics.DurationSeconds)</strong> durée</span>
             </div>
         </div>
-        <button class="new-game-button new-game-button-secondary" @onclick="NewGame">
+        <button class="new-game-button new-game-button-secondary" data-sound="primary" @onclick="NewGame">
             <span class="new-game-icon" aria-hidden="true">+</span>
             <span>Nouvelle partie</span>
         </button>
@@ -82,7 +82,7 @@ else
                 </div>
                 <div class="difficulty-control">
                     <label for="difficulty">Niveau de l'ordinateur</label>
-                    <select id="difficulty" value="@state.Difficulty" disabled="@busy"
+                    <select id="difficulty" data-sound="select" value="@state.Difficulty" disabled="@busy"
                             @onchange="ChangeDifficulty">
                         <option value="@AiDifficulty.Easy">Facile</option>
                         <option value="@AiDifficulty.Normal">Normal</option>
@@ -90,15 +90,15 @@ else
                     </select>
                 </div>
                 <div class="action-row">
-                    <button class="ghost" @onclick="PlaceFleetAtRandom" disabled="@busy">Placement aléatoire</button>
-                    <button class="ghost" @onclick="ResetFleet" disabled="@(busy || state.Player.Ships.Count == 0)">Réinitialiser</button>
-                    <button class="primary" @onclick="Start" disabled="@(busy || state.Player.RemainingShipLengths.Count > 0)">Commencer</button>
+                    <button class="ghost" data-sound="secondary" @onclick="PlaceFleetAtRandom" disabled="@busy">Placement aléatoire</button>
+                    <button class="ghost" data-sound="destructive" @onclick="ResetFleet" disabled="@(busy || state.Player.Ships.Count == 0)">Réinitialiser</button>
+                    <button class="primary" data-sound="primary" @onclick="Start" disabled="@(busy || state.Player.RemainingShipLengths.Count > 0)">Commencer</button>
                 </div>
             </div>
         }
     }
 
-    <button class="rules-button" @onclick="() => rulesOpen = true" aria-label="Règles du jeu" title="Règles du jeu">?</button>
+    <button class="rules-button" data-sound="panel-open" @onclick="() => rulesOpen = true" aria-label="Règles du jeu" title="Règles du jeu">?</button>
 
     @* Un rappel des règles, pas une source de vérité : le serveur reste seul juge, et ce panneau
        ne fait qu'expliquer ce qu'il applique. *@
@@ -108,7 +108,7 @@ else
             <div class="rules-panel" role="dialog" aria-modal="true" aria-label="Règles du jeu" @onclick:stopPropagation>
                 <div class="rules-header">
                     <h2>Règles</h2>
-                    <button class="rules-close" @onclick="() => rulesOpen = false" aria-label="Fermer">×</button>
+                    <button class="rules-close" data-sound="panel-close" @onclick="() => rulesOpen = false" aria-label="Fermer">×</button>
                 </div>
 
                 <section>
@@ -298,6 +298,7 @@ else
                                 Attaque spéciale : @state.PlayerSpecialAttackProgress/@state.SpecialAttackChargeInterval
                             </span>
                             <button class="ghost special-attack-toggle @(specialAttackMode ? "active" : null)"
+                                    data-sound="@(specialAttackMode ? "toggle-off" : "toggle-on")"
                                     disabled="@(!PlayerSpecialAttackCharged || busy || state.CurrentTurn != Side.Player)"
                                     @onclick="ToggleSpecialAttack">
                                 @(specialAttackMode ? "Annuler l'attaque spéciale" : "Attaque spéciale (croix de 5 cases)")

@@ -130,11 +130,47 @@ const tone = (context, frequency, start, duration, volume, type = 'triangle') =>
     oscillator.stop(start + duration + 0.03);
 };
 
+// Sons d'interface, un par intention plutôt que par apparence : deux boutons "ghost" avec des
+// rôles différents (annuler / placer au hasard) ne sonnent pas pareil, et inversement deux
+// boutons de styles différents qui font "la même chose" (valider) partagent leur son. La classe
+// CSS choisit une apparence, l'attribut data-sound choisit une intention ; les deux peuvent
+// diverger, donc ils sont posés séparément dans le balisage.
+const UI_SOUNDS = {
+    primary: { notes: [523.25, 659.25], type: 'triangle', duration: 0.16, volume: 0.34, stagger: 0.055 },
+    secondary: { notes: [392.00], type: 'sine', duration: 0.14, volume: 0.22 },
+    destructive: { notes: [392.00, 293.66], type: 'sawtooth', duration: 0.12, volume: 0.2, stagger: 0.05, noiseDuration: 0.08, noiseVolume: 0.1 },
+    'toggle-on': { notes: [440, 659.25], type: 'square', duration: 0.07, volume: 0.15, stagger: 0.045 },
+    'toggle-off': { notes: [440, 293.66], type: 'square', duration: 0.07, volume: 0.15, stagger: 0.045 },
+    'stepper-up': { notes: [880], type: 'square', duration: 0.045, volume: 0.13 },
+    'stepper-down': { notes: [277.18], type: 'square', duration: 0.045, volume: 0.13 },
+    pick: { notes: [587.33, 739.99], type: 'triangle', duration: 0.09, volume: 0.24, stagger: 0.04 },
+    nav: { notes: [329.63], type: 'sine', duration: 0.16, volume: 0.14, noiseDuration: 0.16, noiseVolume: 0.07 },
+    'panel-open': { notes: [392.00, 523.25, 659.25], type: 'triangle', duration: 0.1, volume: 0.22, stagger: 0.045 },
+    'panel-close': { notes: [659.25, 523.25, 392.00], type: 'triangle', duration: 0.09, volume: 0.18, stagger: 0.04 },
+    checkbox: { notes: [523.25], type: 'sine', duration: 0.06, volume: 0.12 },
+    select: { notes: [700, 900], type: 'triangle', duration: 0.09, volume: 0.2, stagger: 0.05 },
+};
+
+const playUiSound = (context, start, sound) => {
+    sound.notes.forEach((frequency, index) =>
+        tone(context, frequency, start + index * (sound.stagger ?? 0), sound.duration, sound.volume, sound.type));
+
+    if (sound.noiseDuration)
+        noise(context, start, sound.noiseDuration, sound.noiseVolume ?? 0.1);
+};
+
 window.battleSound = (kind) => {
     const context = audio();
     if (!context) return;
 
     const start = context.currentTime;
+
+    if (UI_SOUNDS[kind]) {
+        playUiSound(context, start, UI_SOUNDS[kind]);
+        return;
+    }
+
+    // Issue d'un tir ou d'une partie : inchangé depuis avant les sons d'interface ci-dessus.
     const notes = kind === 'win' ? [523, 659, 784, 1047]
         : kind === 'sunk' ? [220, 165, 110]
         : kind === 'hit' ? [440, 554, 659]
@@ -394,6 +430,10 @@ window.battleAudioStart = () => {
     events.forEach(event => document.addEventListener(event, wake));
 };
 
+// Chaque élément qui doit sonner porte son intention dans data-sound (posé dans le balisage) :
+// pas de son par défaut pour un bouton non catégorisé, plutôt qu'un son générique qui masquerait
+// un oubli de catégorisation.
 document.addEventListener('click', event => {
-    if (event.target.closest('button, a, select')) window.battleSound('click');
+    const target = event.target.closest('[data-sound]');
+    if (target) window.battleSound(target.dataset.sound);
 });

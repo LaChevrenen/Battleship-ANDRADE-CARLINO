@@ -29,10 +29,10 @@
             <div class="custom-fleet-row">
                 <span>@length case@(length > 1 ? "s" : "")</span>
                 <div class="stepper">
-                    <button type="button" @onclick="@(() => Decrement(length))"
+                    <button type="button" data-sound="stepper-down" @onclick="@(() => Decrement(length))"
                             disabled="@(Busy || counts[length] == 0)" aria-label="@($"Un {length} cases de moins")">−</button>
                     <span>@counts[length]</span>
-                    <button type="button" @onclick="@(() => Increment(length))"
+                    <button type="button" data-sound="stepper-up" @onclick="@(() => Increment(length))"
                             disabled="@(Busy || counts[length] >= MaxShipsPerLength)" aria-label="@($"Un {length} cases de plus")">+</button>
                 </div>
             </div>
@@ -40,13 +40,13 @@
     </div>
 
     <label class="custom-adjacency">
-        <input type="checkbox" checked="@allowAdjacentShips" @onchange="@(e => allowAdjacentShips = e.Value is true)" disabled="@Busy" />
+        <input type="checkbox" data-sound="checkbox" checked="@allowAdjacentShips" @onchange="@(e => allowAdjacentShips = e.Value is true)" disabled="@Busy" />
         Autoriser les navires à se toucher par un côté
     </label>
 
     <div class="custom-game-actions">
-        <button type="button" class="ghost" @onclick="Cancel" disabled="@Busy">Annuler</button>
-        <button type="button" class="primary" @onclick="Submit" disabled="@(Busy || TotalShips == 0)">
+        <button type="button" class="ghost" data-sound="destructive" @onclick="Cancel" disabled="@Busy">Annuler</button>
+        <button type="button" class="primary" data-sound="primary" @onclick="Submit" disabled="@(Busy || TotalShips == 0)">
             @(Busy ? "Création en cours…" : "Créer la partie")
         </button>
     </div>

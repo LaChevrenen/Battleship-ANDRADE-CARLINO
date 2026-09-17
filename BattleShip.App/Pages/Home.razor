@@ -22,11 +22,11 @@
 else
 {
     <div class="new-game-controls">
-        <button class="new-game-button" @onclick="NewGame" disabled="@creating">
+        <button class="new-game-button" data-sound="primary" @onclick="NewGame" disabled="@creating">
             <span class="new-game-icon" aria-hidden="true">+</span>
             <span>@(creating ? "Création en cours..." : "Partie classique")</span>
         </button>
-        <button class="new-game-button new-game-button-secondary" @onclick="@(() => customOpen = true)" disabled="@creating">
+        <button class="new-game-button new-game-button-secondary" data-sound="secondary" @onclick="@(() => customOpen = true)" disabled="@creating">
             <span class="new-game-icon" aria-hidden="true">⚙</span>
             <span>Partie personnalisée</span>
         </button>
@@ -64,7 +64,7 @@ else if (games.Any())
                             <span class="game-status status-active">En cours</span>
                             <span class="game-date">@game.CreatedAt.LocalDateTime.ToString("g")</span>
                         </div>
-                        <a class="game-action" href="@($"/partie/{game.Id}")">Reprendre <span aria-hidden="true">→</span></a>
+                        <a class="game-action" data-sound="nav" href="@($"/partie/{game.Id}")">Reprendre <span aria-hidden="true">→</span></a>
                     </div>
                 }
             </div>
@@ -93,7 +93,7 @@ else if (games.Any())
                             <span class="game-status @(game.Winner == Side.Player ? "status-win" : "status-loss")">@(game.Winner == Side.Player ? "Victoire" : "Défaite")</span>
                             <span class="game-date">@game.CreatedAt.LocalDateTime.ToString("g")</span>
                         </div>
-                        <a class="game-action" href="@($"/partie/{game.Id}")">Voir <span aria-hidden="true">→</span></a>
+                        <a class="game-action" data-sound="nav" href="@($"/partie/{game.Id}")">Voir <span aria-hidden="true">→</span></a>
                     </div>
                 }
             </div>

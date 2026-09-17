@@ -11,7 +11,7 @@
     </div>
 
     <nav class="nav-stack">
-        <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+        <NavLink class="nav-link" data-sound="nav" href="" Match="NavLinkMatch.All">
             <span aria-hidden="true">⌂</span>
             <span>Accueil</span>
         </NavLink>
@@ -21,10 +21,10 @@
     <div class="nav-audio" aria-label="Réglages audio">
         <span class="nav-audio-title">Audio</span>
         <label class="sound-toggle">
-            <input type="checkbox" checked="@Audio.SoundEnabled" @onchange="ToggleSound" /> Sons
+            <input type="checkbox" data-sound="checkbox" checked="@Audio.SoundEnabled" @onchange="ToggleSound" /> Sons
         </label>
         <label class="sound-toggle">
-            <input type="checkbox" checked="@Audio.MusicEnabled" @onchange="ToggleMusic" /> Musique
+            <input type="checkbox" data-sound="checkbox" checked="@Audio.MusicEnabled" @onchange="ToggleMusic" /> Musique
         </label>
     </div>
 

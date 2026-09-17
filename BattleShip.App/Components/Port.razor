@@ -25,6 +25,7 @@
                 {
                     <li>
                         <button class="navire-port @(orientation == Orientation.Vertical ? "vertical" : null)"
+                                data-sound="pick"
                                 title="Navire de @choix cases"
                                 aria-pressed="false"
                                 @onclick="@(() => OnSelect.InvokeAsync(index))">
