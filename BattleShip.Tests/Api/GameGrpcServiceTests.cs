@@ -1,4 +1,5 @@
 ﻿using System.Net.Http.Json;
+using System.Text.Json;
 using BattleShip.API.Engine;
 using BattleShip.API.Storage;
 using BattleShip.Protocol;
@@ -7,6 +8,7 @@ using Grpc.Core;
 using Grpc.Net.Client;
 using Grpc.Net.Client.Web;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace BattleShip.Tests.Api;
@@ -43,6 +45,55 @@ public sealed class GameGrpcServiceTests(WebApplicationFactory<Program> factory)
         Assert.Empty(state.Player.Ships);
         Assert.Equal<int>([2, 3, 3, 4, 5], state.Player.RemainingShipLengths.Order());
         Assert.Empty(state.Opponent.Hits);
+    }
+
+    [Fact]
+    public async Task L_etat_grpc_web_transporte_la_jauge_d_attaque_speciale()
+    {
+        // Graine documentée dans GameEndpointsTests : l'ordinateur commence et rate en (8,4), puis
+        // un tir du joueur en (0,0) est à l'eau et l'ordinateur tire une deuxième fois. Sa jauge est
+        // donc garantie non nulle ici, ce qui permet de détecter une jauge adverse oubliée côté câble.
+        const int seed = 20260915;
+        // Le client gRPC doit viser ce même hôte à graine fixe : factory.CreateGrpcClient() vise le
+        // hôte partagé de la classe, dont le magasin de parties en mémoire est distinct de celui-ci.
+        var seededFactory = factory
+            .WithWebHostBuilder(builder => builder.ConfigureTestServices(services => services.AddSingleton(new Random(seed))));
+        var http = seededFactory.CreateClient();
+
+        var created = await (await http.PostAsync("/games", null)).Content.ReadFromJsonAsync<JsonElement>();
+        var id = created.GetProperty("id").GetString()!;
+        var version = created.GetProperty("version").GetInt32();
+
+        var placed = await (await http.PostAsJsonAsync(
+            $"/games/{id}/fleet/random", new { expectedVersion = version })).Content.ReadFromJsonAsync<JsonElement>();
+        version = placed.GetProperty("version").GetInt32();
+
+        var started = await (await http.PostAsync($"/games/{id}/start", null)).Content.ReadFromJsonAsync<JsonElement>();
+        version = started.GetProperty("state").GetProperty("version").GetInt32();
+
+        // Cinq tirs acceptés du joueur : touché ou raté n'a pas d'importance, seule la jauge
+        // nous intéresse ici. Le premier, en (0,0), est le tir à l'eau garanti par la graine.
+        int[,] cells = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 } };
+        for (var i = 0; i < cells.GetLength(0); i++)
+        {
+            var response = await http.PostAsJsonAsync(
+                $"/games/{id}/shots", new { column = cells[i, 0], row = cells[i, 1], expectedVersion = version });
+            var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+            version = body.GetProperty("state").GetProperty("version").GetInt32();
+        }
+
+        var grpcClient = new GameService.GameServiceClient(GrpcChannel.ForAddress(seededFactory.Server.BaseAddress, new GrpcChannelOptions
+        {
+            HttpHandler = new GrpcWebHandler(GrpcWebMode.GrpcWeb, seededFactory.Server.CreateHandler()),
+        }));
+        var state = await grpcClient.GetGameAsync(new GetGameRequest { GameId = id });
+
+        Assert.Equal(GameRules.SpecialAttackChargeInterval, state.SpecialAttackChargeInterval);
+        Assert.Equal(GameRules.SpecialAttackChargeInterval, state.PlayerSpecialAttackProgress);
+        // L'ordinateur ne joue pas forcément à chaque tour du joueur (il perd son tour sur un tir
+        // manqué du joueur mais le garde tant qu'il touche) : seule la borne haute est garantie en
+        // général. La borne basse de 1 est garantie par la graine ci-dessus.
+        Assert.InRange(state.ComputerSpecialAttackProgress, 1, GameRules.SpecialAttackChargeInterval);
     }
 
     [Fact]

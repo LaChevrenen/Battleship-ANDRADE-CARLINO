@@ -10,4 +10,9 @@ public sealed record GameStateDto(
     OpponentBoardDto Opponent,
     GameStatisticsDto Statistics,
     AiDifficulty Difficulty,
-    bool AllowAdjacentShips);
+    bool AllowAdjacentShips,
+    // Valeurs brutes plutôt qu'un texte ou un booléen déjà calculé : le client compare lui-même à
+    // l'intervalle pour afficher « chargée » ou « encore N tours », sans dupliquer la constante.
+    int SpecialAttackChargeInterval,
+    int PlayerSpecialAttackProgress,
+    int ComputerSpecialAttackProgress);

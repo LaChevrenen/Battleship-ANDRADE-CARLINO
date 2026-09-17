@@ -16,6 +16,9 @@ public static class GameStateMessageMapper
             Phase = ToMessage(state.Phase),
             Difficulty = ToMessage(state.Difficulty),
             AllowAdjacentShips = state.AllowAdjacentShips,
+            SpecialAttackChargeInterval = state.SpecialAttackChargeInterval,
+            PlayerSpecialAttackProgress = state.PlayerSpecialAttackProgress,
+            ComputerSpecialAttackProgress = state.ComputerSpecialAttackProgress,
             Player = new Proto.OwnBoard
             {
                 Width = state.Player.Width,

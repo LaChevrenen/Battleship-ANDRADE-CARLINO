@@ -35,7 +35,10 @@ public static class GameStateConverter
             state.Statistics.HasDurationSeconds ? state.Statistics.DurationSeconds : null,
             [.. state.Statistics.History.Select(ToHistory)]),
         ToDto(state.Difficulty),
-        state.AllowAdjacentShips);
+        state.AllowAdjacentShips,
+        state.SpecialAttackChargeInterval,
+        state.PlayerSpecialAttackProgress,
+        state.ComputerSpecialAttackProgress);
 
     private static IReadOnlyList<Coordinate> ToCells(Proto.CellList ship) => [.. ship.Cells.Select(ToDto)];
 

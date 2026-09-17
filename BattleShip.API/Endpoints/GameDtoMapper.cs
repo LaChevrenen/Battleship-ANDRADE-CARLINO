@@ -21,7 +21,10 @@ public static class GameDtoMapper
             ToOpponentBoardDto(game.ComputerBoard.Reveal()),
             ToStatistics(stored),
             game.Difficulty,
-            game.AllowAdjacentShips);
+            game.AllowAdjacentShips,
+            GameRules.SpecialAttackChargeInterval,
+            game.SpecialAttackProgress(Side.Player),
+            game.SpecialAttackProgress(Side.Computer));
     }
 
     public static TurnDto ToTurnDto(PlayerTurnResult turn, StoredGame stored) =>

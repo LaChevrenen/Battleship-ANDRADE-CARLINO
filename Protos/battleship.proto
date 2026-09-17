@@ -30,6 +30,11 @@ message GameState {
   AiDifficulty difficulty = 9;
   // Fixe pour toute la partie personnalisee ; jamais modifiable apres la creation.
   bool allow_adjacent_ships = 10;
+  // Valeurs brutes : le client compare lui-meme la progression a l'intervalle plutot que de
+  // recevoir un texte ou un booleen deja mis en forme.
+  int32 special_attack_charge_interval = 11;
+  int32 player_special_attack_progress = 12;
+  int32 computer_special_attack_progress = 13;
 }
 
 message Coordinate {
