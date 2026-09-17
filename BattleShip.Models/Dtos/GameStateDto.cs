@@ -1,4 +1,4 @@
-namespace BattleShip.Models.Dtos;
+﻿namespace BattleShip.Models.Dtos;
 
 public sealed record GameStateDto(
     Guid Id,
@@ -8,4 +8,5 @@ public sealed record GameStateDto(
     Side? Winner,
     OwnBoardDto Player,
     OpponentBoardDto Opponent,
-    GameStatisticsDto Statistics);
+    GameStatisticsDto Statistics,
+    AiDifficulty Difficulty);

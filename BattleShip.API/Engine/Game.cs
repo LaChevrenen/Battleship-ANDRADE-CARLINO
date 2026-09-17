@@ -1,4 +1,4 @@
-using BattleShip.Models;
+﻿using BattleShip.Models;
 
 namespace BattleShip.API.Engine;
 
@@ -13,7 +13,7 @@ public sealed class Game(
 
     public Board PlayerBoard { get; private set; } = playerFleet.ToBoard();
     public Board ComputerBoard { get; } = computerBoard;
-    public AiDifficulty Difficulty { get; } = difficulty;
+    public AiDifficulty Difficulty { get; private set; } = difficulty;
 
     public GamePhase Phase { get; private set; } = GamePhase.Setup;
 
@@ -30,6 +30,18 @@ public sealed class Game(
             PlaceDefaultFleet(random),
             random,
             difficulty);
+
+    // Le niveau se choisit pendant la préparation seulement : une fois la partie commencée, le
+    // changer reviendrait à changer d'adversaire en cours de route. Même garde que le placement,
+    // et pour la même raison : la flotte lâchée au démarrage rend l'opération sans objet.
+    public PlacementRejection? TrySetDifficulty(AiDifficulty value)
+    {
+        if (fleetUnderConstruction is null)
+            return PlacementRejection.NotInSetup;
+
+        Difficulty = value;
+        return null;
+    }
 
     public PlacementRejection? TryPlaceShip(Coordinate origin, int length, Orientation orientation)
     {

@@ -1,4 +1,4 @@
-@page "/"
+﻿@page "/"
 @using BattleShip.App.Services
 @using BattleShip.Models
 @using BattleShip.Models.Dtos
@@ -16,14 +16,6 @@
 </div>
 
 <div class="new-game-controls">
-    <div class="difficulty-control">
-        <label for="difficulty">Niveau de l'ordinateur</label>
-        <select id="difficulty" @bind="difficulty" disabled="@creating">
-            <option value="@AiDifficulty.Easy">Facile</option>
-            <option value="@AiDifficulty.Normal">Normal</option>
-            <option value="@AiDifficulty.Hard">Difficile</option>
-        </select>
-    </div>
     <button class="new-game-button home-new-game" @onclick="NewGame" disabled="@creating">
         <span class="new-game-icon" aria-hidden="true">+</span>
         <span>@(creating ? "Création en cours..." : "Nouvelle partie")</span>
@@ -106,7 +98,6 @@ else if (games.Any())
 @code {
     private bool creating;
     private bool loading = true;
-    private AiDifficulty difficulty = AiDifficulty.Normal;
     private string? error;
     private IReadOnlyList<GameSummaryDto> games = [];
 
@@ -137,7 +128,7 @@ else if (games.Any())
 
         try
         {
-            var result = await Api.CreateAsync(difficulty);
+            var result = await Api.CreateAsync();
             if (result.Game is { } game)
             {
                 Navigation.NavigateTo($"/partie/{game.Id}");

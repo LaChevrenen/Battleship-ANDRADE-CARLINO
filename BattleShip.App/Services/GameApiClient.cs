@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -15,9 +15,9 @@ public sealed class GameApiClient(HttpClient http)
         Converters = { new JsonStringEnumConverter() },
     };
 
-    public async Task<CreationResult> CreateAsync(AiDifficulty difficulty = AiDifficulty.Normal)
+    public async Task<CreationResult> CreateAsync()
     {
-        var response = await http.PostAsync($"/games?difficulty={Uri.EscapeDataString(difficulty.ToString())}", null);
+        var response = await http.PostAsync("/games", null);
         if (!response.IsSuccessStatusCode)
             return new CreationResult(null, (await ReadProblem(response)).Refusal);
 
@@ -34,6 +34,12 @@ public sealed class GameApiClient(HttpClient http)
         await ReadState(await http.PostAsJsonAsync(
             $"/games/{id}/ships",
             new PlaceShipRequest(origin.Column, origin.Row, length, orientation, expectedVersion),
+            Json));
+
+    public async Task<PreparationResult> SetDifficultyAsync(Guid id, AiDifficulty difficulty, int expectedVersion) =>
+        await ReadState(await http.PostAsJsonAsync(
+            $"/games/{id}/difficulty",
+            new ChangeDifficultyRequest(difficulty, expectedVersion),
             Json));
 
     public async Task<PreparationResult> RotateShipAsync(Guid id, Coordinate cell, int expectedVersion) =>

@@ -14,6 +14,7 @@ public static class GameStateMessageMapper
             Id = state.Id.ToString(),
             Version = state.Version,
             Phase = ToMessage(state.Phase),
+            Difficulty = ToMessage(state.Difficulty),
             Player = new Proto.OwnBoard
             {
                 Width = state.Player.Width,
@@ -83,5 +84,13 @@ public static class GameStateMessageMapper
         Dto.Side.Player => Proto.Side.Player,
         Dto.Side.Computer => Proto.Side.Computer,
         _ => throw new ArgumentOutOfRangeException(nameof(side), side, null),
+    };
+
+    private static Proto.AiDifficulty ToMessage(Dto.AiDifficulty difficulty) => difficulty switch
+    {
+        Dto.AiDifficulty.Easy => Proto.AiDifficulty.Easy,
+        Dto.AiDifficulty.Normal => Proto.AiDifficulty.Normal,
+        Dto.AiDifficulty.Hard => Proto.AiDifficulty.Hard,
+        _ => throw new ArgumentOutOfRangeException(nameof(difficulty), difficulty, null),
     };
 }

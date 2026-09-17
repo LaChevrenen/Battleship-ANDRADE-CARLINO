@@ -1,5 +1,6 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using BattleShip.Models;
@@ -150,6 +151,75 @@ public sealed class PlacementEndpointsTests : IClassFixture<WebApplicationFactor
         var empty = await RemoveShip(created.Id, 2, 0, undone.Version);
         Assert.Equal(HttpStatusCode.Conflict, empty.StatusCode);
         Assert.Equal("NoShipHere", await RejectionOf(empty));
+    }
+
+    private Task<HttpResponseMessage> SetDifficulty(Guid id, string difficulty, int version) =>
+        client.PostAsJsonAsync($"/games/{id}/difficulty", new { difficulty, expectedVersion = version }, Json);
+
+    [Fact]
+    public async Task Une_partie_neuve_annonce_le_niveau_normal()
+    {
+        var created = await CreateGame();
+
+        Assert.Equal(AiDifficulty.Normal, created.Difficulty);
+    }
+
+    [Fact]
+    public async Task Choisir_un_niveau_pendant_la_preparation_le_retient()
+    {
+        var created = await CreateGame();
+
+        var changed = await State(await SetDifficulty(created.Id, "Hard", created.Version));
+
+        Assert.Equal(AiDifficulty.Hard, changed.Difficulty);
+        Assert.Equal(created.Version + 1, changed.Version);
+        // Relu séparément : le niveau fait partie de l'état, il survit à une nouvelle lecture.
+        Assert.Equal(AiDifficulty.Hard, (await GetState(created.Id)).Difficulty);
+    }
+
+    [Fact]
+    public async Task Changer_de_niveau_apres_le_demarrage_est_refuse()
+    {
+        var created = await CreateGame();
+        var placed = await State(await PlaceAtRandom(created.Id, created.Version));
+        var started = await client.PostAsync($"/games/{created.Id}/start", null);
+        var afterStart = await GetState(created.Id);
+
+        var response = await SetDifficulty(created.Id, "Easy", afterStart.Version);
+
+        Assert.Equal(HttpStatusCode.OK, started.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("NotInSetup", await RejectionOf(response));
+        Assert.Equal(AiDifficulty.Normal, (await GetState(created.Id)).Difficulty);
+        Assert.NotEqual(placed.Version, afterStart.Version);
+    }
+
+    [Fact]
+    public async Task Choisir_un_niveau_depuis_une_version_depassee_est_refuse()
+    {
+        var created = await CreateGame();
+        var changed = await State(await SetDifficulty(created.Id, "Easy", created.Version));
+
+        var response = await SetDifficulty(created.Id, "Hard", created.Version);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("StaleVersion", await RejectionOf(response));
+        Assert.Equal(AiDifficulty.Easy, (await GetState(created.Id)).Difficulty);
+        Assert.Equal(changed.Version, (await GetState(created.Id)).Version);
+    }
+
+    [Theory]
+    [InlineData("{\"expectedVersion\": 0}")]
+    [InlineData("{\"difficulty\": \"Impossible\", \"expectedVersion\": 0}")]
+    [InlineData("{\"difficulty\": \"Hard\"}")]
+    public async Task Une_demande_de_niveau_mal_formee_renvoie_400(string body)
+    {
+        var created = await CreateGame();
+
+        var response = await client.PostAsync(
+            $"/games/{created.Id}/difficulty", new StringContent(body, Encoding.UTF8, "application/json"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]

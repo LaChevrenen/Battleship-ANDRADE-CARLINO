@@ -1,4 +1,4 @@
-syntax = "proto3";
+﻿syntax = "proto3";
 
 // Pas "BattleShip.Grpc" : dans un composant Razor, les using sont générés dans l'espace de noms de la page,
 // et "Grpc.Core" s'y résoudrait en "BattleShip.Grpc.Core", qui n'existe pas.
@@ -26,6 +26,8 @@ message GameState {
   OwnBoard player = 6;
   OpponentBoard opponent = 7;
   GameStatistics statistics = 8;
+  // Choisi pendant la preparation : l'ecran de partie doit le retrouver apres un rechargement.
+  AiDifficulty difficulty = 9;
 }
 
 message Coordinate {
@@ -84,6 +86,13 @@ enum GamePhase {
   GAME_PHASE_SETUP = 1;
   GAME_PHASE_IN_PROGRESS = 2;
   GAME_PHASE_FINISHED = 3;
+}
+
+enum AiDifficulty {
+  AI_DIFFICULTY_UNSPECIFIED = 0;
+  AI_DIFFICULTY_EASY = 1;
+  AI_DIFFICULTY_NORMAL = 2;
+  AI_DIFFICULTY_HARD = 3;
 }
 
 enum Side {

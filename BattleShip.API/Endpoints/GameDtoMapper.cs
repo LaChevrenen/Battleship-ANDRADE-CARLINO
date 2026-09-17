@@ -1,4 +1,4 @@
-using BattleShip.API.Engine;
+﻿using BattleShip.API.Engine;
 using BattleShip.API.Storage;
 using BattleShip.Models;
 using BattleShip.Models.Dtos;
@@ -19,7 +19,8 @@ public static class GameDtoMapper
             ToOwnBoardDto(game.PlayerBoard, game.RemainingShipLengths),
             // Seul accès de l'API à la grille adverse : sa vue révélée, jamais ses navires.
             ToOpponentBoardDto(game.ComputerBoard.Reveal()),
-            ToStatistics(stored));
+            ToStatistics(stored),
+            game.Difficulty);
     }
 
     public static TurnDto ToTurnDto(PlayerTurnResult turn, StoredGame stored) =>

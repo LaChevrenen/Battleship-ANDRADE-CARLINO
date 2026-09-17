@@ -1,4 +1,4 @@
-@api = http://localhost:5062
+﻿@api = http://localhost:5062
 
 ### Créer une partie : 201, en-tête Location, phase Setup, version 0, flotte du joueur à poser
 # @name create
@@ -43,6 +43,20 @@ Content-Type: application/json
 ### Le client s'en sert pour colorer l'aperçu ; il ne juge jamais lui-même la validité.
 GET {{api}}/games/{{create.response.body.$.id}}/placements?length=4&orientation=Horizontal
 
+### Choisir le niveau de l'ordinateur : 200, la version augmente
+### Le niveau se choisit pendant la préparation et fait partie de l'état relu après un F5.
+# @name niveau
+POST {{api}}/games/{{create.response.body.$.id}}/difficulty
+Content-Type: application/json
+
+{ "difficulty": "Hard", "expectedVersion": {{place.response.body.$.version}} }
+
+### Un niveau qui n'existe pas : 400, erreur sur le champ Difficulty
+POST {{api}}/games/{{create.response.body.$.id}}/difficulty
+Content-Type: application/json
+
+{ "difficulty": "Impossible", "expectedVersion": {{niveau.response.body.$.version}} }
+
 ### Faire pivoter un navire par une de ses cases : 200, il passe à la verticale
 ### La case visée est le pivot : elle reste occupée, le navire tourne autour d'elle.
 ### Ici A1, donc le navire pivote sans sortir de la grille.
@@ -50,7 +64,7 @@ GET {{api}}/games/{{create.response.body.$.id}}/placements?length=4&orientation=
 POST {{api}}/games/{{create.response.body.$.id}}/ships/rotate
 Content-Type: application/json
 
-{ "column": 0, "row": 0, "expectedVersion": {{place.response.body.$.version}} }
+{ "column": 0, "row": 0, "expectedVersion": {{niveau.response.body.$.version}} }
 
 ### Le faire pivoter une seconde fois le remet à l'horizontale : 200
 # @name rotateback
@@ -154,10 +168,9 @@ Content-Type: application/json
 ### Lire une partie inconnue (par exemple après un redémarrage du serveur) : 404
 GET {{api}}/games/00000000-0000-0000-0000-000000000000
 
-### Créer une partie contre un adversaire difficile : 201
-### Le niveau est choisi à la création et ne change plus ensuite.
+### Créer une partie, puis la supprimer : 201
 # @name hard
-POST {{api}}/games?difficulty=Hard
+POST {{api}}/games
 
 ### Supprimer cette partie : 204, sans corps
 DELETE {{api}}/games/{{hard.response.body.$.id}}

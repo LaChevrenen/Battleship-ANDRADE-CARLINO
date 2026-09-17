@@ -1,4 +1,4 @@
-using BattleShip.Models;
+﻿using BattleShip.Models;
 using BattleShip.Models.Dtos;
 using Proto = BattleShip.Protocol;
 
@@ -33,7 +33,8 @@ public static class GameStateConverter
             state.Statistics.MissedShots,
             state.Statistics.AccuracyPercentage,
             state.Statistics.HasDurationSeconds ? state.Statistics.DurationSeconds : null,
-            [.. state.Statistics.History.Select(ToHistory)]));
+            [.. state.Statistics.History.Select(ToHistory)]),
+        ToDto(state.Difficulty));
 
     private static IReadOnlyList<Coordinate> ToCells(Proto.CellList ship) => [.. ship.Cells.Select(ToDto)];
 
@@ -61,5 +62,13 @@ public static class GameStateConverter
         Proto.Side.Player => Side.Player,
         Proto.Side.Computer => Side.Computer,
         _ => throw new ArgumentOutOfRangeException(nameof(side), side, null),
+    };
+
+    private static AiDifficulty ToDto(Proto.AiDifficulty difficulty) => difficulty switch
+    {
+        Proto.AiDifficulty.Easy => AiDifficulty.Easy,
+        Proto.AiDifficulty.Normal => AiDifficulty.Normal,
+        Proto.AiDifficulty.Hard => AiDifficulty.Hard,
+        _ => throw new ArgumentOutOfRangeException(nameof(difficulty), difficulty, null),
     };
 }

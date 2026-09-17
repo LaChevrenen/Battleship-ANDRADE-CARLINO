@@ -1,4 +1,4 @@
-using BattleShip.API.Engine;
+﻿using BattleShip.API.Engine;
 using BattleShip.API.Storage;
 using BattleShip.Models;
 using BattleShip.Models.Dtos;
@@ -25,15 +25,16 @@ public static class GameEndpoints
         games.MapPost("/{id:guid}/ships/move", MoveShip);
         games.MapPost("/{id:guid}/fleet/random", PlaceFleetAtRandom);
         games.MapPost("/{id:guid}/fleet/reset", ResetFleet);
+        games.MapPost("/{id:guid}/difficulty", ChangeDifficulty);
         games.MapPost("/{id:guid}/start", Start);
         games.MapPost("/{id:guid}/shots", Fire);
         return app;
     }
 
-    private static Created<GameStateDto> Create(GameStore store, Random random, AiDifficulty? difficulty)
+    private static Created<GameStateDto> Create(GameStore store, Random random)
     {
         var state = store.Add(
-            Game.CreateWithRandomComputerFleet(random, difficulty ?? AiDifficulty.Normal),
+            Game.CreateWithRandomComputerFleet(random),
             GameDtoMapper.ToStateDto);
         return TypedResults.Created($"/games/{state.Id}", state);
     }
@@ -92,6 +93,26 @@ public static class GameEndpoints
         if (!store.TryExecute(
                 id,
                 stored => stored.TryRemoveShipAt(cell, request.ExpectedVersion!.Value, out var rejection)
+                    ? rejection is { } reason
+                        ? TypedResults.Conflict(Rejection(reason.ToString(), Message(reason)))
+                        : Ok(GameDtoMapper.ToStateDto(stored))
+                    : TypedResults.Conflict(StaleVersion()),
+                out var result))
+            return TypedResults.NotFound();
+
+        return result;
+    }
+
+    private static async Task<Results<Ok<GameStateDto>, ValidationProblem, NotFound, Conflict<ProblemDetails>>> ChangeDifficulty(
+        Guid id, ChangeDifficultyRequest request, IValidator<ChangeDifficultyRequest> validator, GameStore store)
+    {
+        var validation = await validator.ValidateAsync(request);
+        if (!validation.IsValid)
+            return TypedResults.ValidationProblem(validation.ToDictionary());
+
+        if (!store.TryExecute(
+                id,
+                stored => stored.TrySetDifficulty(request.Difficulty!.Value, request.ExpectedVersion!.Value, out var rejection)
                     ? rejection is { } reason
                         ? TypedResults.Conflict(Rejection(reason.ToString(), Message(reason)))
                         : Ok(GameDtoMapper.ToStateDto(stored))

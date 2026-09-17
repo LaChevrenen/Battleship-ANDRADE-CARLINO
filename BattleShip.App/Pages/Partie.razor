@@ -51,10 +51,19 @@ else
     }
     else
     {
-        <div class="turn-banner @(state.CurrentTurn == Side.Player ? "turn-player" : "turn-computer")">
+        @* Pendant la préparation, personne n'a la main : CurrentTurn est null, et annoncer
+           « L'ordinateur joue » serait faux. *@
+        <div class="turn-banner @(state.CurrentTurn == Side.Computer ? "turn-computer" : "turn-player")">
             <span class="turn-dot" aria-hidden="true"></span>
             <div>
-                <p class="turn-label">@(state.CurrentTurn == Side.Player ? "À ton tour" : "L'ordinateur joue")</p>
+                <p class="turn-label">
+                    @(state.CurrentTurn switch
+                    {
+                        Side.Player => "À ton tour",
+                        Side.Computer => "L'ordinateur joue",
+                        _ => "Prépare ta flotte",
+                    })
+                </p>
                 <p class="turn-detail">Phase : @state.Phase</p>
             </div>
         </div>
@@ -71,6 +80,15 @@ else
                     {
                         <span>Choisis un navire dans le port, ou clique un navire posé pour le reprendre en main. Molette pour l'orienter, clic sur la grille pour le poser.</span>
                     }
+                </div>
+                <div class="difficulty-control">
+                    <label for="difficulty">Niveau de l'ordinateur</label>
+                    <select id="difficulty" value="@state.Difficulty" disabled="@busy"
+                            @onchange="ChangeDifficulty">
+                        <option value="@AiDifficulty.Easy">Facile</option>
+                        <option value="@AiDifficulty.Normal">Normal</option>
+                        <option value="@AiDifficulty.Hard">Difficile</option>
+                    </select>
                 </div>
                 <div class="action-row">
                     <button class="ghost" @onclick="PlaceFleetAtRandom" disabled="@busy">Placement aléatoire</button>
@@ -530,6 +548,13 @@ else
     private Task PlaceFleetAtRandom() => Prepare(version => Api.PlaceFleetAtRandomAsync(Guid.Parse(Id), version));
 
     private Task ResetFleet() => Prepare(version => Api.ResetFleetAsync(Guid.Parse(Id), version));
+
+    // Le niveau est une donnée de la partie, pas un réglage d'écran : c'est le serveur qui le
+    // retient, et l'état relu après un rechargement le rapporte.
+    private Task ChangeDifficulty(ChangeEventArgs change) =>
+        Enum.TryParse<AiDifficulty>(change.Value?.ToString(), out var chosen)
+            ? Prepare(version => Api.SetDifficultyAsync(Guid.Parse(Id), chosen, version))
+            : Task.CompletedTask;
 
     private async Task Prepare(Func<int, Task<PreparationResult>> command)
     {

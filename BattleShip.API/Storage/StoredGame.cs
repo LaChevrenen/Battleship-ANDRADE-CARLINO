@@ -51,6 +51,19 @@ public sealed class StoredGame(Guid id, Game game)
         return true;
     }
 
+    public bool TrySetDifficulty(AiDifficulty difficulty, int expectedVersion, out PlacementRejection? rejection)
+    {
+        rejection = null;
+        if (expectedVersion != Version)
+            return false;
+
+        rejection = Game.TrySetDifficulty(difficulty);
+        if (rejection is null)
+            Version++;
+
+        return true;
+    }
+
     public bool TryRotateShipAt(Coordinate cell, int expectedVersion, out PlacementRejection? rejection)
     {
         rejection = null;
