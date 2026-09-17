@@ -58,6 +58,24 @@ public sealed class GameCreationEndpointTests : IClassFixture<WebApplicationFact
         Assert.Equal(6, created.Player.Width);
         Assert.Equal(6, created.Player.Height);
         Assert.Equal<int>([2, 3], created.Player.RemainingShipLengths.Order());
+        Assert.False(created.AllowAdjacentShips);
+    }
+
+    [Fact]
+    public async Task Le_reglage_de_contact_choisi_a_la_creation_est_annonce_dans_l_etat()
+    {
+        var response = await CreateCustom(6, 6, new Dictionary<int, int> { [1] = 1 }, allowAdjacentShips: true);
+
+        var created = await State(response);
+        Assert.True(created.AllowAdjacentShips);
+    }
+
+    [Fact]
+    public async Task Une_partie_classique_annonce_le_contact_interdit()
+    {
+        var created = await State(await client.PostAsync("/games", null));
+
+        Assert.False(created.AllowAdjacentShips);
     }
 
     [Theory]

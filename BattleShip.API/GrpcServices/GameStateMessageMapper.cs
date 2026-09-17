@@ -15,6 +15,7 @@ public static class GameStateMessageMapper
             Version = state.Version,
             Phase = ToMessage(state.Phase),
             Difficulty = ToMessage(state.Difficulty),
+            AllowAdjacentShips = state.AllowAdjacentShips,
             Player = new Proto.OwnBoard
             {
                 Width = state.Player.Width,

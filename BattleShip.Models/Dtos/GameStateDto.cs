@@ -9,4 +9,5 @@ public sealed record GameStateDto(
     OwnBoardDto Player,
     OpponentBoardDto Opponent,
     GameStatisticsDto Statistics,
-    AiDifficulty Difficulty);
+    AiDifficulty Difficulty,
+    bool AllowAdjacentShips);

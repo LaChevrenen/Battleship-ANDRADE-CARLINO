@@ -38,6 +38,17 @@ public sealed class GameCustomCreationTests
         Assert.NotNull(acceptee);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Le_reglage_de_contact_choisi_a_la_creation_reste_lisible_toute_la_partie(bool allowAdjacentShips)
+    {
+        var game = Game.TryCreate(width: 6, height: 6, shipLengths: [2], allowAdjacentShips, new Random(0));
+
+        Assert.NotNull(game);
+        Assert.Equal(allowAdjacentShips, game.AllowAdjacentShips);
+    }
+
     [Fact]
     public void La_flotte_du_joueur_reprend_la_meme_configuration_que_celle_de_l_ordinateur()
     {

@@ -15,6 +15,11 @@ public sealed class Game(
     public Board ComputerBoard { get; } = computerBoard;
     public AiDifficulty Difficulty { get; private set; } = difficulty;
 
+    // Capturé une fois pour toute la partie, avant que fleetUnderConstruction ne soit lâchée au
+    // démarrage : sans quoi cette information disparaîtrait dès la fin de la préparation, alors
+    // que le panneau de règles peut être rouvert à tout moment de la partie.
+    public bool AllowAdjacentShips { get; } = playerFleet.AllowAdjacentShips;
+
     public GamePhase Phase { get; private set; } = GamePhase.Setup;
 
     // Null hors partie en cours : personne n'a la main avant le tirage au sort ni après la victoire.

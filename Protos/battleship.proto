@@ -28,6 +28,8 @@ message GameState {
   GameStatistics statistics = 8;
   // Choisi pendant la preparation : l'ecran de partie doit le retrouver apres un rechargement.
   AiDifficulty difficulty = 9;
+  // Fixe pour toute la partie personnalisee ; jamais modifiable apres la creation.
+  bool allow_adjacent_ships = 10;
 }
 
 message Coordinate {

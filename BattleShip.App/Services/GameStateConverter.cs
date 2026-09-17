@@ -34,7 +34,8 @@ public static class GameStateConverter
             state.Statistics.AccuracyPercentage,
             state.Statistics.HasDurationSeconds ? state.Statistics.DurationSeconds : null,
             [.. state.Statistics.History.Select(ToHistory)]),
-        ToDto(state.Difficulty));
+        ToDto(state.Difficulty),
+        state.AllowAdjacentShips);
 
     private static IReadOnlyList<Coordinate> ToCells(Proto.CellList ship) => [.. ship.Cells.Select(ToDto)];
 

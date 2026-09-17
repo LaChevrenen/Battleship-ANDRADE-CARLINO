@@ -20,7 +20,8 @@ public static class GameDtoMapper
             // Seul accès de l'API à la grille adverse : sa vue révélée, jamais ses navires.
             ToOpponentBoardDto(game.ComputerBoard.Reveal()),
             ToStatistics(stored),
-            game.Difficulty);
+            game.Difficulty,
+            game.AllowAdjacentShips);
     }
 
     public static TurnDto ToTurnDto(PlayerTurnResult turn, StoredGame stored) =>
