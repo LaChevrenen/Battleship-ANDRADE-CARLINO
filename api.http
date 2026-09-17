@@ -147,6 +147,13 @@ Content-Type: application/json
 
 { "column": 0, "row": 0, "expectedVersion": {{fire.response.body.$.state.version}} }
 
+### Attaque spéciale sans jauge : 409 SpecialAttackNotCharged
+### Se charge après 5 tirs acceptés de ce camp ; ce scénario n'en a joué qu'un jusqu'ici.
+POST {{api}}/games/{{create.response.body.$.id}}/shots
+Content-Type: application/json
+
+{ "column": 3, "row": 3, "expectedVersion": {{fire.response.body.$.state.version}}, "specialAttack": true }
+
 ### Tirer depuis une version dépassée : 409 StaleVersion, la partie ne change pas
 POST {{api}}/games/{{create.response.body.$.id}}/shots
 Content-Type: application/json

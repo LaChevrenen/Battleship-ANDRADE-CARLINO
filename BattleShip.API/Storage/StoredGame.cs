@@ -154,4 +154,31 @@ public sealed class StoredGame(Guid id, Game game)
 
         return true;
     }
+
+    // Même contrat que TryFire, pour une attaque spéciale : elle compte comme un seul tir dans
+    // l'historique et les statistiques, avec le résultat agrégé de AreaShotResult.
+    public bool TryFireSpecialAttack(
+        Coordinate center,
+        int expectedVersion,
+        Func<RevealedBoard, Coordinate> chooseComputerTarget,
+        [NotNullWhen(true)] out PlayerAreaTurnResult? turn)
+    {
+        if (expectedVersion != Version)
+        {
+            turn = null;
+            return false;
+        }
+
+        turn = Game.PlayerFireSpecialAttack(center, chooseComputerTarget);
+        if (turn.PlayerShot.IsAccepted)
+        {
+            Version++;
+            PlayerShotCount++;
+            PlayerShotHistory.Add(new ShotHistoryDto(center, turn.PlayerShot.AggregateOutcome!.Value));
+            if (Game.Phase == GamePhase.Finished)
+                FinishedAt = DateTimeOffset.UtcNow;
+        }
+
+        return true;
+    }
 }

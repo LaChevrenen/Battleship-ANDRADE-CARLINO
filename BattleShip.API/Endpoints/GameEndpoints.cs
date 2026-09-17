@@ -265,6 +265,15 @@ public static class GameEndpoints
             return TypedResults.ValidationProblem(validation.ToDictionary());
 
         var target = new Coordinate(request.Column!.Value, request.Row!.Value);
+
+        if (request.SpecialAttack)
+        {
+            if (!store.TryExecute(id, stored => FireAreaLocked(stored, target, request.ExpectedVersion!.Value, random), out var areaResult))
+                return TypedResults.NotFound();
+
+            return areaResult;
+        }
+
         if (!store.TryExecute(id, stored => FireLocked(stored, target, request.ExpectedVersion!.Value, random), out var result))
             return TypedResults.NotFound();
 
@@ -290,6 +299,24 @@ public static class GameEndpoints
         {
             null => TypedResults.Ok(GameDtoMapper.ToTurnDto(turn, stored)),
             // Les bornes dépendent de la partie : c'est le moteur qui les juge, mais c'est bien une entrée invalide.
+            ShotRejection.OutOfBounds => TypedResults.ValidationProblem(
+                new Dictionary<string, string[]> { ["target"] = [Message(ShotRejection.OutOfBounds)] }),
+            ShotRejection reason => TypedResults.Conflict(Rejection(reason.ToString(), Message(reason))),
+        };
+    }
+
+    // Même découpage que FireLocked : la case visée se traite comme la cible d'un tir simple pour
+    // les refus (y compris le hors-grille, reclassé en 400) ; SpecialAttackNotCharged, lui, dépend
+    // de l'état de la partie et suit donc le chemin commun des refus en 409.
+    private static Results<Ok<TurnDto>, ValidationProblem, NotFound, Conflict<ProblemDetails>> FireAreaLocked(
+        StoredGame stored, Coordinate center, int expectedVersion, Random random)
+    {
+        if (!stored.TryFireSpecialAttack(center, expectedVersion, ChooseComputerTarget(random, stored.Game.Difficulty), out var turn))
+            return TypedResults.Conflict(StaleVersion());
+
+        return turn.PlayerShot.Center.Rejection switch
+        {
+            null => TypedResults.Ok(GameDtoMapper.ToAreaTurnDto(turn, stored)),
             ShotRejection.OutOfBounds => TypedResults.ValidationProblem(
                 new Dictionary<string, string[]> { ["target"] = [Message(ShotRejection.OutOfBounds)] }),
             ShotRejection reason => TypedResults.Conflict(Rejection(reason.ToString(), Message(reason))),
@@ -340,6 +367,7 @@ public static class GameEndpoints
         ShotRejection.NotYourTurn => "Ce n'est pas votre tour.",
         ShotRejection.NotStarted => "La partie n'a pas encore commencé.",
         ShotRejection.GameOver => "La partie est terminée.",
+        ShotRejection.SpecialAttackNotCharged => "L'attaque spéciale n'est pas encore chargée.",
         _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, null),
     };
 }

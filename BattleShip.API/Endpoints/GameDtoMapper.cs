@@ -33,6 +33,14 @@ public static class GameDtoMapper
     public static TurnDto ToOpeningTurnDto(IReadOnlyList<ComputerShot> computerShots, StoredGame stored) =>
         new(null, null, [.. computerShots.Select(ToComputerShotDto)], ToStateDto(stored));
 
+    // Même forme que ToTurnDto : une attaque spéciale se lit à la même adresse, avec un résultat
+    // agrégé (AreaShotResult.AggregateOutcome) au lieu d'un résultat unique.
+    public static TurnDto ToAreaTurnDto(PlayerAreaTurnResult turn, StoredGame stored) =>
+        new(turn.PlayerShot.AggregateOutcome,
+            turn.PlayerShot.SunkShip?.Cells.ToList(),
+            [.. turn.ComputerShots.Select(ToComputerShotDto)],
+            ToStateDto(stored));
+
     private static OwnBoardDto ToOwnBoardDto(Board board, IReadOnlyList<int> remainingShipLengths)
     {
         var computerShots = board.Reveal();
