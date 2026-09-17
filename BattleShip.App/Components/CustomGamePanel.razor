@@ -1,0 +1,102 @@
+@using BattleShip.Models.Dtos
+
+@* Ce panneau ne juge rien : les bornes ci-dessous ne servent qu'à limiter les valeurs qu'on peut
+   saisir dans le formulaire, elles ne remplacent pas le serveur. Une configuration qui les
+   respecte peut quand même être refusée — largeur/hauteur/longueurs dupliquent GameRules côté
+   serveur (BattleShip.App ne référence pas BattleShip.API), et « ne tient pas sur la grille »
+   n'est tranché que par POST /games, qui peut répondre 409 FleetDoesNotFit. *@
+
+<div class="custom-game-panel">
+    <h2>Partie personnalisée</h2>
+
+    <div class="custom-game-grid">
+        <label>
+            Largeur
+            <input type="number" min="@MinGridSize" max="@MaxGridSize" step="1"
+                   value="@width" @onchange="@(e => SetWidth(e.Value))" disabled="@Busy" />
+        </label>
+        <label>
+            Hauteur
+            <input type="number" min="@MinGridSize" max="@MaxGridSize" step="1"
+                   value="@height" @onchange="@(e => SetHeight(e.Value))" disabled="@Busy" />
+        </label>
+    </div>
+
+    <div class="custom-fleet">
+        <span class="custom-fleet-title">Flotte — @TotalShips navire@(TotalShips > 1 ? "s" : "")</span>
+        @foreach (var length in Lengths)
+        {
+            <div class="custom-fleet-row">
+                <span>@length case@(length > 1 ? "s" : "")</span>
+                <div class="stepper">
+                    <button type="button" @onclick="@(() => Decrement(length))"
+                            disabled="@(Busy || counts[length] == 0)" aria-label="@($"Un {length} cases de moins")">−</button>
+                    <span>@counts[length]</span>
+                    <button type="button" @onclick="@(() => Increment(length))"
+                            disabled="@(Busy || counts[length] >= MaxShipsPerLength)" aria-label="@($"Un {length} cases de plus")">+</button>
+                </div>
+            </div>
+        }
+    </div>
+
+    <label class="custom-adjacency">
+        <input type="checkbox" checked="@allowAdjacentShips" @onchange="@(e => allowAdjacentShips = e.Value is true)" disabled="@Busy" />
+        Autoriser les navires à se toucher par un côté
+    </label>
+
+    <div class="custom-game-actions">
+        <button type="button" class="ghost" @onclick="Cancel" disabled="@Busy">Annuler</button>
+        <button type="button" class="primary" @onclick="Submit" disabled="@(Busy || TotalShips == 0)">
+            @(Busy ? "Création en cours…" : "Créer la partie")
+        </button>
+    </div>
+</div>
+
+@code {
+    // Duplique GameRules côté serveur : voir le commentaire en tête de fichier.
+    private const int MinGridSize = 5;
+    private const int MaxGridSize = 15;
+    private const int MaxShipsPerLength = 3;
+    private static readonly int[] Lengths = [1, 2, 3, 4, 5];
+
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public EventCallback<GameCreationRequest> OnCreate { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private int width = 10;
+    private int height = 10;
+    private bool allowAdjacentShips;
+
+    // Composition de départ : la flotte classique, modifiable. Un formulaire vide obligerait à
+    // tout construire soi-même avant de pouvoir créer quoi que ce soit.
+    private readonly Dictionary<int, int> counts = new() { [1] = 0, [2] = 1, [3] = 2, [4] = 1, [5] = 1 };
+
+    private int TotalShips => counts.Values.Sum();
+
+    private void SetWidth(object? value) => width = Clamp(value, width);
+    private void SetHeight(object? value) => height = Clamp(value, height);
+
+    private static int Clamp(object? value, int fallback) =>
+        value is string text && int.TryParse(text, out var parsed) ? Math.Clamp(parsed, MinGridSize, MaxGridSize) : fallback;
+
+    private void Increment(int length)
+    {
+        if (counts[length] < MaxShipsPerLength)
+            counts[length]++;
+    }
+
+    private void Decrement(int length)
+    {
+        if (counts[length] > 0)
+            counts[length]--;
+    }
+
+    private Task Cancel() => OnCancel.InvokeAsync();
+
+    private Task Submit()
+    {
+        var request = new GameCreationRequest(
+            width, height, counts.Where(pair => pair.Value > 0).ToDictionary(), allowAdjacentShips);
+        return OnCreate.InvokeAsync(request);
+    }
+}

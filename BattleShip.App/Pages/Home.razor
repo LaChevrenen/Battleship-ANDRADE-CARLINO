@@ -1,4 +1,5 @@
 ﻿@page "/"
+@using BattleShip.App.Components
 @using BattleShip.App.Services
 @using BattleShip.Models
 @using BattleShip.Models.Dtos
@@ -14,12 +15,23 @@
     <p>Une partie contre l'ordinateur, sur une grille de 10 × 10. Les flottes sont placées par le serveur.</p>
 </div>
 
-<div class="new-game-controls">
-    <button class="new-game-button home-new-game" @onclick="NewGame" disabled="@creating">
-        <span class="new-game-icon" aria-hidden="true">+</span>
-        <span>@(creating ? "Création en cours..." : "Nouvelle partie")</span>
-    </button>
-</div>
+@if (customOpen)
+{
+    <CustomGamePanel Busy="creating" OnCreate="NewCustomGame" OnCancel="@(() => customOpen = false)" />
+}
+else
+{
+    <div class="new-game-controls">
+        <button class="new-game-button home-new-game" @onclick="NewGame" disabled="@creating">
+            <span class="new-game-icon" aria-hidden="true">+</span>
+            <span>@(creating ? "Création en cours..." : "Partie classique")</span>
+        </button>
+        <button class="new-game-button new-game-button-secondary" @onclick="@(() => customOpen = true)" disabled="@creating">
+            <span class="new-game-icon" aria-hidden="true">⚙</span>
+            <span>Partie personnalisée</span>
+        </button>
+    </div>
+}
 
 @if (loading)
 {
@@ -97,6 +109,7 @@ else if (games.Any())
 @code {
     private bool creating;
     private bool loading = true;
+    private bool customOpen;
     private string? error;
     private IReadOnlyList<GameSummaryDto> games = [];
 
@@ -122,14 +135,20 @@ else if (games.Any())
         }
     }
 
-    private async Task NewGame()
+    private Task NewGame() => CreateGame(null);
+
+    // Sur un refus (400 mal formé, 409 la flotte ne tient pas), le panneau reste ouvert : c'est un
+    // réglage à corriger, pas une raison de perdre ce que le joueur avait déjà choisi.
+    private Task NewCustomGame(GameCreationRequest request) => CreateGame(request);
+
+    private async Task CreateGame(GameCreationRequest? request)
     {
         creating = true;
         error = null;
 
         try
         {
-            var result = await Api.CreateAsync();
+            var result = await Api.CreateAsync(request);
             if (result.Game is { } game)
             {
                 Navigation.NavigateTo($"/partie/{game.Id}");

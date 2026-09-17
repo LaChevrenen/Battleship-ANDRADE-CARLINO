@@ -15,9 +15,15 @@ public sealed class GameApiClient(HttpClient http)
         Converters = { new JsonStringEnumConverter() },
     };
 
-    public async Task<CreationResult> CreateAsync()
+    // request absent : partie classique, comme avant. Présent : partie personnalisée — le serveur
+    // peut alors refuser en 400 (entrée mal formée) ou en 409 (configuration qu'il ne peut pas
+    // placer, cf. docs/REGLES.md) ; les deux se lisent comme n'importe quel autre refus.
+    public async Task<CreationResult> CreateAsync(GameCreationRequest? request = null)
     {
-        var response = await http.PostAsync("/games", null);
+        var response = request is null
+            ? await http.PostAsync("/games", null)
+            : await http.PostAsJsonAsync("/games", request, Json);
+
         if (!response.IsSuccessStatusCode)
             return new CreationResult(null, (await ReadProblem(response)).Refusal);
 
