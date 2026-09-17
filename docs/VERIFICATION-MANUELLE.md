@@ -149,10 +149,11 @@ Cliquer sur **Commencer**.
 
 - un décompte **3, 2, 1, Feu !** s'affiche au centre de l'écran, par-dessus tout le reste, chaque
   chiffre avec son propre son ; « Feu ! » se distingue des chiffres (couleur, son plus marqué) ;
-- pendant tout le décompte, aucun tir n'est encore joué ;
-- une fois le décompte terminé, la phase passe à `InProgress`, le port et la barre de préparation
-  disparaissent, et si l'ordinateur a commencé, ses tirs d'ouverture sont visibles sur ma grille —
-  le premier arrive environ une seconde après la fin du décompte, pas instantanément.
+- pendant les chiffres 3, 2 et 1, l'écran reste sur la préparation (port, barre de préparation) ;
+- **dès que « Feu ! » apparaît**, les deux grilles de combat apparaissent avec lui, tout de suite —
+  pas seulement une fois que « Feu ! » a fini de s'afficher ;
+- si l'ordinateur a commencé, son premier tir n'arrive qu'**une seconde après ce basculement**,
+  pas avant : le temps de voir les grilles vides avant le premier impact.
 
 Puis cliquer sur une case de **ma** grille : rien ne se passe. Un placement après le démarrage
 serait refusé avec `NotInSetup`, mais l'écran n'envoie même plus la demande.
@@ -240,10 +241,18 @@ foreach ($cell in $cells) {
 
 Ouvrir l'URL affichée.
 
-À vérifier : la carte de fin annonce le gagnant, avec **nombre de tirs**, **touches**,
-**précision** et **durée**, **par-dessus** les deux grilles dans leur état final — la mise en page
-ne se décale pas, la carte flotte au milieu de l'écran, fond légèrement assombri. Cliquer sur une
-case de la grille adverse affiche alors `La partie est terminée.`
+À vérifier :
+
+- la carte de fin annonce le gagnant, avec **nombre de tirs**, **touches**, **précision** et
+  **durée**, **par-dessus** les deux grilles dans leur état final — la mise en page ne se décale
+  pas, la carte flotte au milieu de l'écran, fond légèrement assombri ;
+- le rond au-dessus du titre montre bien un **✓** (victoire, vert) ou un **×** (défaite, rouge) —
+  pas un rond vide ;
+- un bouton **×** en haut à droite de la carte, et un clic sur le fond assombri en dehors de la
+  carte, la referment tous les deux : les grilles restent alors visibles sans plus rien par-dessus,
+  pour pouvoir examiner la position finale. Recharger la page (`F5`) la fait réapparaître.
+
+Cliquer sur une case de la grille adverse (carte fermée) affiche `La partie est terminée.`
 
 Dernier essai lancé pendant l'écriture de cette procédure : partie terminée après 51 tirs du
 joueur, gagnant `Computer`.
@@ -312,11 +321,12 @@ tirée dans la croix ne s'allume pas non plus.
 - ses points se remplissent à chacun de ses tirs, le symbole passe à l'orange une fois les cinq
   remplis, puis tout retombe à vide quand l'ordinateur l'utilise — sans qu'aucune action ne soit
   requise côté joueur ;
-- au tour où il l'utilise, les cases qu'il révèle sur **ma** grille flashent en **orange**
-  (`tir-special-anime`) plutôt qu'en ambre comme un tir simple ;
+- au tour où il l'utilise, les cases qu'il révèle sur **ma** grille flashent toutes **en même
+  temps**, en **orange** (`tir-special-anime`), et non une par une comme une série de tirs simples
+  — la croix se voit d'un coup, comme la mienne, pas comme cinq coups isolés ;
 - le message affiché se termine par `L'ordinateur a utilisé son attaque spéciale !`. Sans ce
-  message et cette couleur distincte, une attaque spéciale de l'ordinateur et une série de touches
-  en chasse-cible se ressemblent trait pour trait à l'écran — c'était le problème signalé.
+  message et ce flash groupé, une attaque spéciale de l'ordinateur et une série de touches en
+  chasse-cible se ressemblent trait pour trait à l'écran — c'était le problème signalé.
 
 5. Décocher **Activer les attaques spéciales** en créant une partie personnalisée, puis jouer.
 

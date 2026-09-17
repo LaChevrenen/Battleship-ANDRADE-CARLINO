@@ -303,6 +303,7 @@ h1, h2, h3, p {
 }
 
 .outcome-card {
+    position: relative;
     display: grid;
     justify-items: center;
     gap: 0.45rem;
@@ -313,6 +314,30 @@ h1, h2, h3, p {
     text-align: center;
     box-shadow: 0 18px 48px rgba(12, 24, 40, 0.35);
     animation: outcome-arrive 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Même geste que .rules-close : cliquer le fond assombri ferme aussi la carte (@onclick sur
+   .outcome-overlay), ce bouton n'est qu'une cible plus visible pour le même geste. */
+.outcome-close {
+    position: absolute;
+    top: 0.7rem;
+    right: 0.7rem;
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.7);
+    color: #31506d;
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.outcome-close:hover,
+.outcome-close:focus-visible {
+    background: #ffffff;
 }
 
 .outcome-card .new-game-button {
@@ -344,16 +369,27 @@ h1, h2, h3, p {
     color: #87322f;
 }
 
+/* Pas de "background: currentColor" ici : posé sur ce même élément que "color: #ffffff", il se
+   serait résolu en blanc lui aussi (currentColor reprend la couleur de l'élément qui le porte,
+   pas celle d'un ancêtre) — un rond blanc sur fond blanc, la marque invisible. La couleur du fond
+   vient donc de .outcome-win/.outcome-loss ci-dessus, explicitement, une par issue. */
 .outcome-mark {
     display: grid;
     place-items: center;
     width: 3.25rem;
     height: 3.25rem;
     border-radius: 50%;
-    background: currentColor;
     color: #ffffff;
     font-size: 1.8rem;
     font-weight: 700;
+}
+
+.outcome-win .outcome-mark {
+    background: #155b47;
+}
+
+.outcome-loss .outcome-mark {
+    background: #87322f;
 }
 
 .outcome-stats {

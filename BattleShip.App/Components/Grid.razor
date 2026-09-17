@@ -60,6 +60,12 @@
     [Parameter] public ShotOutcome? AnimatedOutcome { get; set; }
     [Parameter] public bool AnimatedSpecial { get; set; }
 
+    // Révélation simultanée des cases d'une attaque spéciale (jusqu'à 5, en croix) : les flasher
+    // une par une, comme un tir simple, les ferait ressembler à une série de coups isolés plutôt
+    // qu'à une seule attaque groupée. AnimatedCell reste pour le cas à une seule case (tir simple,
+    // ou centre de MA propre attaque spéciale, dont le contrat ne détaille pas les 4 voisines).
+    [Parameter] public IReadOnlyCollection<Coordinate> AnimatedSpecialCells { get; set; } = [];
+
     // Case où l'ordinateur a tiré en dernier, marquée durablement — contrairement à AnimatedCell,
     // qui ne joue qu'une brève animation d'impact et ne laisse aucune trace une fois finie.
     [Parameter] public Coordinate? LastComputerShot { get; set; }
@@ -99,8 +105,16 @@
     private string? PreviewClass(Coordinate cell) =>
         !Preview.Contains(cell) ? null : PreviewValid ? "apercu-ok" : "apercu-ko";
 
-    private string? AnimationClass(Coordinate cell) =>
-        AnimatedCell != cell || AnimatedOutcome is null ? null : AnimatedSpecial ? "tir-special-anime" : "tir-anime";
+    private string? AnimationClass(Coordinate cell)
+    {
+        if (AnimatedSpecialCells.Contains(cell))
+            return "tir-special-anime";
+
+        if (AnimatedCell != cell || AnimatedOutcome is null)
+            return null;
+
+        return AnimatedSpecial ? "tir-special-anime" : "tir-anime";
+    }
 
     private string? LastShotClass(Coordinate cell) =>
         cell == LastComputerShot ? "dernier-tir-ia" : null;

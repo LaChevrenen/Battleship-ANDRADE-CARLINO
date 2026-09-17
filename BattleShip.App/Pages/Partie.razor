@@ -30,12 +30,15 @@ else if (state is null)
 }
 else
 {
-    @if (state.Phase == GamePhase.Finished)
+    @if (state.Phase == GamePhase.Finished && !outcomeDismissed)
     {
         @* Overlay plutôt qu'un bloc dans le fil de la page : la grille finale reste visible
-           derrière, et rien ne se décale — seul l'écran se recouvre, jamais la mise en page. *@
-        <div class="outcome-overlay">
-            <div class="outcome-card @(state.Winner == Side.Player ? "outcome-win" : "outcome-loss")">
+           derrière, et rien ne se décale — seul l'écran se recouvre, jamais la mise en page.
+           Rejouable depuis l'historique (bouton Voir) : il faut pouvoir la refermer pour
+           examiner la position finale sans qu'elle reste en permanence par-dessus. *@
+        <div class="outcome-overlay" @onclick="() => outcomeDismissed = true">
+            <div class="outcome-card @(state.Winner == Side.Player ? "outcome-win" : "outcome-loss")" @onclick:stopPropagation>
+                <button class="outcome-close" data-sound="panel-close" @onclick="() => outcomeDismissed = true" aria-label="Fermer et voir la grille">×</button>
                 <span class="outcome-mark" aria-hidden="true">@(state.Winner == Side.Player ? "✓" : "×")</span>
                 <h2>@(state.Winner == Side.Player ? "Tu as gagné." : "L'ordinateur a gagné.")</h2>
                 <p>@(state.Winner == Side.Player ? "La flotte adverse est vaincue." : "Ta flotte a été entièrement touchée.")</p>
@@ -334,6 +337,7 @@ else
                       AnimatedCell="animatedCell"
                       AnimatedOutcome="animatedOutcome"
                       AnimatedSpecial="animatedSpecial"
+                      AnimatedSpecialCells="animatedSpecialCells"
                       LastComputerShot="lastComputerShot"
                       Preview="preview"
                       PreviewValid="previewValid"
@@ -372,6 +376,7 @@ else
     private bool busy;
     private bool starting;
     private bool rulesOpen;
+    private bool outcomeDismissed;
     private int? selectedLength;
     private int? selectedPortIndex;
     private Orientation orientation = Orientation.Horizontal;
@@ -383,6 +388,7 @@ else
     private Coordinate? animatedCell;
     private ShotOutcome? animatedOutcome;
     private bool animatedSpecial;
+    private IReadOnlyCollection<Coordinate> animatedSpecialCells = [];
 
     // Persiste au-delà de l'animation d'impact, contrairement à animatedCell : sert de repère
     // durable sur ma grille, pas d'un simple flash.
@@ -397,13 +403,17 @@ else
     private string? startCountdownText;
     private const string FireWord = "Feu !";
 
+    // « Feu ! » n'est pas dans cette liste : contrairement aux chiffres, il ne doit pas retarder
+    // la suite — les grilles apparaissent en même temps que lui, pas après qu'il ait eu le temps
+    // de s'afficher. Voir PlayStartSequence.
     private static readonly (string Text, TimeSpan Duration)[] StartCountdownSteps =
     [
         ("3", TimeSpan.FromMilliseconds(550)),
         ("2", TimeSpan.FromMilliseconds(550)),
         ("1", TimeSpan.FromMilliseconds(550)),
-        (FireWord, TimeSpan.FromMilliseconds(650)),
     ];
+
+    private static readonly TimeSpan FireWordDuration = TimeSpan.FromMilliseconds(650);
 
     // Ne s'applique qu'au tout premier tir de l'ordinateur, quand il commence : sans lui, ce tir
     // peut s'afficher avant que l'écran ait fini de charger, et passe inaperçu. Les tirs suivants,
@@ -509,8 +519,10 @@ else
         message = null;
         refusal = null;
         // Blazor réutilise cette instance de page en changeant seulement Id (ex. « Nouvelle
-        // partie ») : sans ça, un survol resterait mémorisé d'une partie à l'autre.
+        // partie ») : sans ça, un survol ou une carte de fin refermée resterait mémorisé d'une
+        // partie à l'autre.
         specialAttackHover = null;
+        outcomeDismissed = false;
         return LoadState();
     }
 
@@ -785,14 +797,16 @@ else
 
         if (result.Turn is { } turn)
         {
-            // Le jingle et l'animation doivent être terminés avant qu'aucun coup ne soit révélé —
-            // sans quoi le premier tir de l'ordinateur peut s'afficher avant que l'écran ait fini
-            // de charger, et passe inaperçu.
+            // Le décompte doit être terminé avant qu'aucun coup ne soit révélé — sans quoi le
+            // premier tir de l'ordinateur peut s'afficher avant que l'écran ait fini de charger,
+            // et passe inaperçu. Les grilles, elles, apparaissent dès « Feu ! », pas après :
+            // PlayStartSequence rend la main à ce moment-là sans attendre la fin de son propre
+            // affichage.
             await PlayStartSequence();
             await AnimateTurn(turn, turn.ComputerShots.Count == 0
                 ? "À toi de jouer."
                 : $"L'ordinateur a commencé : {Describe(turn.ComputerShots)}",
-                firstComputerShotDelay: FirstComputerShotDelay);
+                firstComputerShotDelay: FirstComputerShotDelay, isGameStart: true);
         }
         else
         {
@@ -812,16 +826,35 @@ else
     // à chaque étape, sinon l'animation CSS ne rejouerait pas pour un simple changement de texte.
     private async Task PlayStartSequence()
     {
+        // « 3 », « 2 », « 1 » : chacun affiché et attendu avant le suivant.
         foreach (var (text, duration) in StartCountdownSteps)
         {
             startCountdownText = text;
             await InvokeAsync(StateHasChanged);
-            await Audio.PlayAsync(text == FireWord ? "start" : "countdown-tick");
+            await Audio.PlayAsync("countdown-tick");
             await Task.Delay(duration);
         }
 
-        startCountdownText = null;
+        // « Feu ! » : affiché, puis la main est rendue tout de suite, sans attendre son propre
+        // temps d'affichage — c'est à ce moment précis que l'appelant doit faire apparaître les
+        // grilles, pas après. Le mot s'efface tout seul un peu plus tard, en fond.
+        startCountdownText = FireWord;
         await InvokeAsync(StateHasChanged);
+        await Audio.PlayAsync("start");
+        _ = ClearFireWordAfterDelay();
+    }
+
+    private async Task ClearFireWordAfterDelay()
+    {
+        await Task.Delay(FireWordDuration);
+
+        // Ne l'efface que s'il s'agit encore du même mot : une partie relancée entre-temps aurait
+        // déjà remplacé startCountdownText par son propre décompte, qu'il ne faut pas couper court.
+        if (startCountdownText == FireWord)
+        {
+            startCountdownText = null;
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private async Task Fire(Coordinate target)
@@ -863,24 +896,33 @@ else
     }
 
     private async Task AnimateTurn(TurnDto turn, string finalMessage, Coordinate? playerTarget = null,
-        TimeSpan? firstComputerShotDelay = null, bool playerSpecialAttack = false)
+        TimeSpan? firstComputerShotDelay = null, bool playerSpecialAttack = false, bool isGameStart = false)
     {
         var previous = state!;
         animatedCell = playerTarget;
         animatedOutcome = turn.PlayerOutcome;
         animatedSpecial = playerSpecialAttack;
+        animatedSpecialCells = [];
+
+        // Au démarrage, garder previous.Phase (Setup) le temps de la révélation, comme pour un tir
+        // normal, laisserait les grilles de combat invisibles jusqu'à la toute fin : ce cas doit
+        // basculer tout de suite. « L'ordinateur joue » le temps de sa révélation s'il commence ;
+        // sinon, l'état final suffit puisqu'il n'y a rien à révéler.
+        var startingTurn = turn.ComputerShots.Count > 0 ? Side.Computer : turn.State.CurrentTurn;
         state = turn.State with
         {
-            Phase = previous.Phase,
-            CurrentTurn = previous.CurrentTurn,
+            Phase = isGameStart ? GamePhase.InProgress : previous.Phase,
+            CurrentTurn = isGameStart ? startingTurn : previous.CurrentTurn,
             Winner = previous.Winner,
             Player = previous.Player,
         };
         await InvokeAsync(StateHasChanged);
 
-        for (var index = 0; index < turn.ComputerShots.Count; index++)
+        var index = 0;
+        var isFirstReveal = true;
+        while (index < turn.ComputerShots.Count)
         {
-            if (index == 0)
+            if (isFirstReveal)
             {
                 if (firstComputerShotDelay is { } delay)
                     await Task.Delay(delay);
@@ -889,24 +931,46 @@ else
             {
                 await Task.Delay(450);
             }
+            isFirstReveal = false;
 
-            var shot = turn.ComputerShots[index];
-            animatedCell = shot.Target;
-            animatedOutcome = shot.Outcome;
-            animatedSpecial = shot.SpecialAttack;
-            // Avance avec chaque tir révélé ; se stabilise sur le dernier une fois la série finie.
-            lastComputerShot = shot.Target;
+            // Une attaque spéciale se révèle d'un bloc, comme la mienne : cinq flashes décalés
+            // dans le temps ressembleraient à cinq tirs isolés plutôt qu'à une seule croix.
+            List<ComputerShotDto> revealed;
+            if (turn.ComputerShots[index].SpecialAttack)
+            {
+                var start = index;
+                while (index < turn.ComputerShots.Count && turn.ComputerShots[index].SpecialAttack)
+                    index++;
+                revealed = [.. turn.ComputerShots.Skip(start).Take(index - start)];
+
+                animatedCell = null;
+                animatedOutcome = null;
+                animatedSpecialCells = [.. revealed.Select(shot => shot.Target)];
+            }
+            else
+            {
+                revealed = [turn.ComputerShots[index]];
+                index++;
+
+                animatedCell = revealed[0].Target;
+                animatedOutcome = revealed[0].Outcome;
+                animatedSpecial = false;
+                animatedSpecialCells = [];
+            }
+
+            // Avance avec chaque case révélée ; se stabilise sur la dernière une fois la série finie.
+            lastComputerShot = revealed[^1].Target;
             var player = state.Player;
-            var misses = shot.Outcome == ShotOutcome.Miss
-                ? [.. player.Misses, shot.Target]
-                : player.Misses;
-            var hits = shot.Outcome is ShotOutcome.Hit or ShotOutcome.Sunk
-                ? [.. player.Hits, shot.Target]
-                : player.Hits;
-            var sunkShips = shot.Outcome == ShotOutcome.Sunk
-                ? [.. player.SunkShips.Concat(turn.State.Player.SunkShips.Where(ship => ship.Contains(shot.Target)))
-                    .DistinctBy(ship => string.Join(',', ship.Select(cell => $"{cell.Column}:{cell.Row}")))]
-                : player.SunkShips;
+            var missTargets = revealed.Where(shot => shot.Outcome == ShotOutcome.Miss).Select(shot => shot.Target);
+            var hitTargets = revealed.Where(shot => shot.Outcome is ShotOutcome.Hit or ShotOutcome.Sunk).Select(shot => shot.Target);
+            var sunkTargets = revealed.Where(shot => shot.Outcome == ShotOutcome.Sunk).Select(shot => shot.Target).ToHashSet();
+
+            var misses = (IReadOnlyList<Coordinate>)[.. player.Misses, .. missTargets];
+            var hits = (IReadOnlyList<Coordinate>)[.. player.Hits, .. hitTargets];
+            var sunkShips = sunkTargets.Count == 0
+                ? player.SunkShips
+                : [.. player.SunkShips.Concat(turn.State.Player.SunkShips.Where(ship => ship.Any(cell => sunkTargets.Contains(cell))))
+                    .DistinctBy(ship => string.Join(',', ship.Select(cell => $"{cell.Column}:{cell.Row}")))];
 
             state = state with
             {
