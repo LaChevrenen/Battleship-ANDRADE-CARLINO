@@ -14,6 +14,11 @@ public sealed class Board(int width, int height, IEnumerable<Ship> ships)
 
     public bool AllShipsSunk => fleet.All(IsSunk);
 
+    // Ne fuit rien par elle-même : c'est une capacité neutre du plateau, au même titre que Ships.
+    // Seul GameDtoMapper décide QUAND l'exposer au client (jamais en cours de partie, uniquement
+    // à la toute fin si son propriétaire a perdu) — la garde vit là, pas ici.
+    public IReadOnlyList<Ship> UnsunkShips() => [.. fleet.Where(ship => !IsSunk(ship))];
+
     public ShotResult ReceiveShot(Coordinate target)
     {
         if (!IsInside(target))

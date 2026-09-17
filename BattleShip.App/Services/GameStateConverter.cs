@@ -26,7 +26,8 @@ public static class GameStateConverter
             state.Opponent.Height,
             [.. state.Opponent.Misses.Select(ToDto)],
             [.. state.Opponent.Hits.Select(ToDto)],
-            [.. state.Opponent.SunkShips.Select(ToCells)]),
+            [.. state.Opponent.SunkShips.Select(ToCells)],
+            [.. state.Opponent.RemainingShips.Select(ToCells)]),
         new GameStatisticsDto(
             state.Statistics.TotalShots,
             state.Statistics.SuccessfulShots,

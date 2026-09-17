@@ -37,6 +37,7 @@ public static class GameStateMessageMapper
                 Misses = { state.Opponent.Misses.Select(ToMessage) },
                 Hits = { state.Opponent.Hits.Select(ToMessage) },
                 SunkShips = { state.Opponent.SunkShips.Select(ToCellList) },
+                RemainingShips = { state.Opponent.RemainingShips.Select(ToCellList) },
             },
             Statistics = new Proto.GameStatistics
             {

@@ -67,6 +67,9 @@ message OpponentBoard {
   repeated Coordinate misses = 3;
   repeated Coordinate hits = 4;
   repeated CellList sunk_ships = 5;
+  // Vide sauf partie terminee et perdue : seule brèche volontaire dans le masquage des navires
+  // adverses non coules, une fois qu'il n'y a plus de partie a jouer derriere.
+  repeated CellList remaining_ships = 6;
 }
 
 message GameStatistics {

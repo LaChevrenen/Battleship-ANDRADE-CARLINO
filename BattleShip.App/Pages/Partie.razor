@@ -180,7 +180,9 @@ else
                     <h3>Ce que tu ne vois pas</h3>
                     <p>
                         La position d'un navire adverse n'apparaît qu'une fois ce navire coulé. Tant
-                        qu'il flotte, elle ne quitte jamais le serveur.
+                        qu'il flotte et que la partie continue, elle ne quitte jamais le serveur.
+                        Seule exception : si tu perds, les navires jamais touchés te sont montrés en
+                        grisé une fois la partie terminée — il n'y a alors plus rien à protéger.
                     </p>
                 </section>
 
@@ -295,6 +297,7 @@ else
                     <Grid Title="Grille adverse"
                           Width="state.Opponent.Width"
                           Height="state.Opponent.Height"
+                          Ships="state.Opponent.RemainingShips"
                           SunkShips="state.Opponent.SunkShips"
                           Misses="state.Opponent.Misses"
                           Hits="state.Opponent.Hits"
@@ -995,20 +998,9 @@ else
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task NewGame()
-    {
-        var result = await Answered(() => Api.CreateAsync());
-        if (result is null)
-            return;
-
-        if (result.Game is { } game)
-        {
-            Navigation.NavigateTo($"/partie/{game.Id}");
-            return;
-        }
-
-        error = result.Refusal;
-    }
+    // Renvoie au choix du mode plutôt que de créer directement une partie classique : il existe
+    // deux modes (classique, personnalisée), ce bouton ne doit pas trancher à la place du joueur.
+    private void NewGame() => Navigation.NavigateTo("/");
 
     // Le serveur n'a pas répondu du tout : il n'y a aucun résultat à lire, et ce n'est pas un refus.
     private async Task<T?> Answered<T>(Func<Task<T>> call) where T : class

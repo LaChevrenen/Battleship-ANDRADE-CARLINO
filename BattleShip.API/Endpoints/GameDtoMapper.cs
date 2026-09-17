@@ -17,8 +17,9 @@ public static class GameDtoMapper
             game.CurrentTurn,
             game.Winner,
             ToOwnBoardDto(game.PlayerBoard, game.RemainingShipLengths),
-            // Seul accès de l'API à la grille adverse : sa vue révélée, jamais ses navires.
-            ToOpponentBoardDto(game.ComputerBoard.Reveal()),
+            // Vue révélée pour ce qui a été joué ; RemainingEnemyShips n'ajoute les navires jamais
+            // coulés que si la partie est perdue, seule brèche volontaire dans l'invariant n°1.
+            ToOpponentBoardDto(game.ComputerBoard.Reveal(), RemainingEnemyShips(game)),
             ToStatistics(stored),
             game.Difficulty,
             game.AllowAdjacentShips,
@@ -59,12 +60,21 @@ public static class GameDtoMapper
             [.. remainingShipLengths]);
     }
 
-    private static OpponentBoardDto ToOpponentBoardDto(RevealedBoard view) =>
+    private static OpponentBoardDto ToOpponentBoardDto(RevealedBoard view, IReadOnlyList<IReadOnlyList<Coordinate>> remainingShips) =>
         new(view.Width,
             view.Height,
             [.. view.Misses],
             [.. view.Hits],
-            [.. view.SunkShips.Select(cells => cells.ToList())]);
+            [.. view.SunkShips.Select(cells => cells.ToList())],
+            remainingShips);
+
+    // Défaite : la partie est finie, le joueur ne peut plus rien tenter contre ces navires, il n'y
+    // a donc plus rien à protéger derrière leur position. Vide dans tous les autres cas (partie en
+    // cours, ou terminée par une victoire — où tout est de toute façon déjà coulé).
+    private static IReadOnlyList<IReadOnlyList<Coordinate>> RemainingEnemyShips(Game game) =>
+        game.Phase == GamePhase.Finished && game.Winner == Side.Computer
+            ? [.. game.ComputerBoard.UnsunkShips().Select(ship => ship.Cells.ToList())]
+            : [];
 
     private static GameStatisticsDto ToStatistics(StoredGame stored)
     {

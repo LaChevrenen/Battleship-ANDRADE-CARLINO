@@ -38,9 +38,12 @@ Je dois pouvoir expliquer chaque ligne livrée et la défendre à l'oral + un QC
   nominale **et une erreur attendue démontrable**.
 - **CORS** configuré entre l'origine du front et celle de l'API.
 - Toutes les **règles du jeu sont vérifiées côté serveur**. Le client ne décide rien.
-- **Les informations adverses non découvertes ne sortent jamais du serveur.**
-  Aucun DTO, aucune réponse gRPC, aucun log renvoyé au client ne contient la position d'un
-  navire non touché. C'est l'invariant n°1 du projet.
+- **Les informations adverses non découvertes ne sortent jamais du serveur tant que la partie
+  se joue.** Aucun DTO, aucune réponse gRPC, aucun log renvoyé au client ne contient la position
+  d'un navire non touché avant la fin de la partie. C'est l'invariant n°1 du projet. Seule
+  exception, volontaire : une fois la partie **terminée et perdue**, les navires adverses jamais
+  coulés sont révélés (`OpponentBoardDto.RemainingShips`) — il n'y a alors plus de partie à
+  protéger. Cette exception ne s'applique ni en cours de partie, ni en cas de victoire.
 
 ## Invariants métier à respecter et à tester
 

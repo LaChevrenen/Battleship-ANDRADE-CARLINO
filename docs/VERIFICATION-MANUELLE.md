@@ -254,6 +254,14 @@ Ouvrir l'URL affichée.
 
 Cliquer sur une case de la grille adverse (carte fermée) affiche `La partie est terminée.`
 
+Si le gagnant affiché par le script est `Computer` (défaite) :
+
+À vérifier : une fois la carte de fin fermée, la grille adverse montre, **en gris** (même teinte
+que mes propres navires non révélés sur « Ma grille »), la position des navires adverses qui
+n'ont jamais été touchés — en plus des navires coulés (rouges) et des cases ratées/touchées déjà
+connues. Si le gagnant est `Player` (victoire), rien de plus à vérifier ici : tous les navires
+adverses sont déjà coulés, il n'y a rien de plus à révéler.
+
 Dernier essai lancé pendant l'écriture de cette procédure : partie terminée après 51 tirs du
 joueur, gagnant `Computer`.
 
@@ -271,11 +279,11 @@ Cliquer sur le bouton **?**, en bas à droite.
 
 ## 13. Nouvelle partie
 
-Cliquer sur **Nouvelle partie**.
+Cliquer sur **Nouvelle partie** (carte de fin, ou page d'erreur « partie introuvable »).
 
-À vérifier : l'URL change d'identifiant, la phase revient à `Setup`, ma grille est vide et le port
-contient de nouveau les cinq navires, et l'ancienne partie reste accessible par son ancienne URL
-tant que l'API tourne.
+À vérifier : ramène à l'**accueil** (`/`), avec le choix entre **Partie classique** et
+**Partie personnalisée** — aucune partie n'est créée avant d'avoir choisi. L'ancienne partie
+reste accessible par son ancienne URL tant que l'API tourne.
 
 ## 14. Attaque spéciale
 

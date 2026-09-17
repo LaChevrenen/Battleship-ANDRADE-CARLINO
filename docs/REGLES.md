@@ -105,9 +105,14 @@ Un tir refusé **ne change rien** : ni la grille, ni le tour, ni le nombre de co
 
 ## Information cachée
 
-Le joueur ne reçoit **jamais** la position d'un navire adverse qu'il n'a pas coulé. Il connaît
-seulement ses propres navires, les résultats de ses tirs, les navires adverses coulés et les
-tirs de l'ordinateur sur sa grille.
+Le joueur ne reçoit **jamais**, tant que la partie se joue, la position d'un navire adverse
+qu'il n'a pas coulé. Il connaît seulement ses propres navires, les résultats de ses tirs, les
+navires adverses coulés et les tirs de l'ordinateur sur sa grille.
+
+**Exception, à la toute fin d'une partie perdue seulement** : les navires adverses jamais coulés
+sont alors révélés, en plus de ceux déjà coulés — il n'y a plus de partie à protéger derrière
+leur position. Cette exception ne s'applique ni en cours de partie, ni en cas de victoire (où
+tout est de toute façon déjà coulé).
 
 ## Reprise
 
