@@ -22,7 +22,7 @@
 else
 {
     <div class="new-game-controls">
-        <button class="new-game-button home-new-game" @onclick="NewGame" disabled="@creating">
+        <button class="new-game-button" @onclick="NewGame" disabled="@creating">
             <span class="new-game-icon" aria-hidden="true">+</span>
             <span>@(creating ? "Création en cours..." : "Partie classique")</span>
         </button>

@@ -40,10 +40,6 @@ body {
     text-transform: uppercase;
 }
 
-.home-new-game {
-    margin-bottom: 2.5rem;
-}
-
 .new-game-controls {
     display: flex;
     align-items: flex-end;
