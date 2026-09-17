@@ -103,6 +103,30 @@ Constatées pendant l'implémentation (commits en Références) :
   changement de sélection ou d'orientation et garde la liste reçue ; `Grid` reçoit les cases de
   l'aperçu et un booléen, et ne calcule aucune validité.
 
+### Reprises ultérieures du geste de placement
+
+- **Rotation d'un navire posé, puis abandon du geste côté écran.** `POST …/ships/rotate` et
+  `FleetUnderConstruction.TryRotateAt` ont d'abord pivoté le navire **autour de son origine**
+  (commit `c1079f7`), puis **autour de la case visée**, qui reste occupée après la rotation
+  (commit `799e9da`). Le second contrat est celui du code actuel. Les tests moteur ont suivi ce
+  changement ; le test d'API `Faire_pivoter_un_navire_le_redresse_autour_de_son_origine` ne l'a
+  pas suivi et est resté rouge jusqu'à sa réécriture en
+  `Faire_pivoter_un_navire_le_redresse_autour_de_la_case_visee`.
+- **Déplacement atomique** : `POST …/ships/move` et `FleetUnderConstruction.TryMoveAt` valident la
+  position d'arrivée avant de retirer le navire, en l'excluant de sa propre validation. Sur un
+  refus, rien n'a été retiré ; le test
+  `Reprendre_un_navire_pose_avec_une_nouvelle_position_invalide_est_refuse_sans_rien_changer`
+  le vérifie.
+- **L'écran n'appelle plus ni l'une ni l'autre.** Cliquer un navire posé le **reprend en main** :
+  la page appelle `POST …/ships/remove`, puis le navire redevient un navire à poser, avec sa
+  longueur rendue au port et l'orientation qu'il avait. La molette n'oriente que le navire en
+  main ; un navire posé ne pivote jamais sur le plateau. `ships/rotate` et `ships/move` restent
+  exposées, testées et présentes dans `api.http`, mais aucune page ne s'en sert.
+- **État d'écran supprimé** : la page ne retient plus de « navire posé sélectionné ». Ce champ
+  était une liste de cases réaccordée par `SequenceEqual` à chaque relecture d'état ; une rotation
+  changeant les cases, la comparaison échouait et la sélection tombait à `null`, ce qui effaçait
+  le tracé et rendait la molette sans effet.
+
 ## Vérification et réexamen
 
 ## Références
@@ -114,8 +138,15 @@ Constatées pendant l'implémentation (commits en Références) :
   - `e6a4956` ajoute l ecran de preparation avec placement manuel et aleatoire
   - `efdc119` corrige l apercu et documente la verification du placement
   - `6d7a024` ajoute les origines valides et le retrait d un navire par sa case
+- Commits des reprises ultérieures :
+  - `c1079f7` fait pivoter un navire pose autour de son origine
+  - `32026b2` fait pivoter un navire pose par la touche r ou la molette
+  - `799e9da` ajoute la rotation prioritaire et le deplacement atomique des navires
+  - `867e129` reprend un navire pose en main au lieu de le pivoter sur place
 - Vérifications : `dotnet test BattleShip.slnx` → 529 réussis sur 529 à la fin de l'extension,
   538 après les origines valides ; `api.http` rejoué avec curl contre l'API réelle ; trois
   mutations exécutées puis annulées, sur 529 tests — `PlacementRules` court-circuité par le
   placement manuel (**4 échecs**), version non vérifiée au placement (**1 échec**), flotte non
   lâchée au démarrage (**24 échecs**).
+- Après la reprise en main : 561 réussis sur 561. Le comportement de l'écran lui-même — tracé,
+  molette, reprise — n'est couvert par aucun test et se vérifie à la main.

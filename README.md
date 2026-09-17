@@ -63,17 +63,24 @@ dotnet test BattleShip.slnx
 
 - Partie contre l'ordinateur sur une grille 10 × 10, flotte 5, 4, 3, 3 et 2 cases.
 - **Placement manuel de sa flotte** : port des navires restants dessinés à leur vraie longueur,
-  rotation du navire sélectionné à la molette sur la grille, aperçu au survol coloré en vert ou
-  en rouge selon ce que le serveur autorise, reprise d'un navire posé depuis n'importe laquelle
-  de ses cases, et « Placement aléatoire » autant de fois que voulu tant que la partie n'a pas
-  commencé. La flotte de l'ordinateur est placée par le serveur.
+  aperçu au survol coloré en vert ou en rouge selon ce que le serveur autorise, molette pour
+  orienter le navire qu'on a en main, et « Placement aléatoire » autant de fois que voulu tant
+  que la partie n'a pas commencé. La flotte de l'ordinateur est placée par le serveur.
+- **Reprendre un navire déjà posé** : cliquer dessus le retire de la grille et le remet en main,
+  dans l'état d'un navire à poser. Il se réoriente à la molette et se repose où l'on veut. Un
+  navire resté sur la grille ne pivote jamais sous la molette.
+- **Trois niveaux pour l'ordinateur**, choisis à la création : Facile, Normal, Difficile.
 - Toutes les règles sont appliquées côté serveur : placement, tours, rejeu tant qu'on touche,
   refus explicites, victoire.
-- Ordinateur « chasse-cible » : il tire au hasard, puis vise les cases voisines jusqu'à couler.
 - Les positions des navires adverses non coulés ne sortent jamais du serveur.
 - Reprise d'une partie par son URL `/partie/{identifiant}`, l'état étant relu en gRPC-Web.
 - Historique en mémoire des parties créées, avec distinction entre parties en cours et parties
-  terminées depuis l'accueil ; le bouton « Reprendre » ouvre leur URL.
+  terminées depuis l'accueil ; le bouton « Reprendre » ouvre leur URL, et une partie peut être
+  supprimée.
+- **Statistiques de fin de partie** : nombre de tirs, tirs au but, tirs à l'eau, pourcentage de
+  réussite, durée, et historique des tirs.
+- **Sons et musique**, activables ou coupables depuis l'écran de jeu ; la musique est synthétisée
+  dans le navigateur, sans ressource externe.
 - Requêtes HTTP d'exemple dans `api.http`.
 
 ## Arbitrages
@@ -89,11 +96,14 @@ dotnet test BattleShip.slnx
 
 - Le front n'est couvert par aucun test automatisé. Sa vérification se fait à la main, avec la
   procédure `docs/VERIFICATION-MANUELLE.md`.
-- Les parties vivent en mémoire et n'expirent pas : un redémarrage du serveur les perd toutes, et
-  la page affiche alors « Cette partie n'existe plus sur le serveur ».
-- La rotation d'un navire se fait à la molette sur la grille après sélection du navire dans le
-  port ou sur le plateau. L'historique et les parties en cours sont conservés en mémoire : un
-  redémarrage du serveur les perd.
+- Les parties vivent en mémoire et n'expirent pas, historique compris : un redémarrage du serveur
+  les perd toutes, et la page affiche alors « Cette partie n'existe plus sur le serveur ».
+- **L'orientation d'un navire ne se change qu'à la molette.** Sans souris à molette — sur un écran
+  tactile, par exemple — il n'existe aucun moyen de poser un navire verticalement. Le bouton
+  « Orientation » a été retiré au profit du geste, et aucun équivalent clavier ne l'a remplacé.
+- **`POST /games/{id}/ships/rotate` et `POST /games/{id}/ships/move` ne sont plus appelées par
+  l'écran.** Elles restent exposées, testées et présentes dans `api.http` : reprendre un navire en
+  main couvre les deux besoins côté interface. Voir `docs/adr/0004`.
 - `BattleShip.Tests` référence `BattleShip.App` avec `Aliases="app"`, et les tests d'écran
   commencent par `extern alias app;`. Sans cet alias, les types générés depuis `battleship.proto`
   existeraient deux fois — l'API les génère en `Both`, l'App en `Client` — et tout le projet de

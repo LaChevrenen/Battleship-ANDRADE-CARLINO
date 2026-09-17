@@ -44,19 +44,20 @@ Content-Type: application/json
 GET {{api}}/games/{{create.response.body.$.id}}/placements?length=4&orientation=Horizontal
 
 ### Faire pivoter un navire par une de ses cases : 200, il passe à la verticale
-### Ancrage sur l'origine : la case en haut à gauche ne bouge pas, A1 reste occupée.
+### La case visée est le pivot : elle reste occupée, le navire tourne autour d'elle.
+### Ici A1, donc le navire pivote sans sortir de la grille.
 # @name rotate
 POST {{api}}/games/{{create.response.body.$.id}}/ships/rotate
 Content-Type: application/json
 
-{ "column": 2, "row": 0, "expectedVersion": {{place.response.body.$.version}} }
+{ "column": 0, "row": 0, "expectedVersion": {{place.response.body.$.version}} }
 
 ### Le faire pivoter une seconde fois le remet à l'horizontale : 200
 # @name rotateback
 POST {{api}}/games/{{create.response.body.$.id}}/ships/rotate
 Content-Type: application/json
 
-{ "column": 0, "row": 2, "expectedVersion": {{rotate.response.body.$.version}} }
+{ "column": 0, "row": 0, "expectedVersion": {{rotate.response.body.$.version}} }
 
 ### Faire pivoter une case sans navire : 409 NoShipHere, la flotte ne change pas
 POST {{api}}/games/{{create.response.body.$.id}}/ships/rotate
@@ -64,12 +65,26 @@ Content-Type: application/json
 
 { "column": 9, "row": 9, "expectedVersion": {{rotateback.response.body.$.version}} }
 
+### Déplacer un navire posé en une seule opération : 200, il quitte A1 pour A6, à la verticale
+### La position d'arrivée est validée avant tout retrait : sur un refus, la flotte ne bouge pas.
+# @name move
+POST {{api}}/games/{{create.response.body.$.id}}/ships/move
+Content-Type: application/json
+
+{ "sourceColumn": 2, "sourceRow": 0, "targetColumn": 0, "targetRow": 5, "orientation": "Vertical", "expectedVersion": {{rotateback.response.body.$.version}} }
+
+### Déplacer depuis une case sans navire : 409 NoShipHere
+POST {{api}}/games/{{create.response.body.$.id}}/ships/move
+Content-Type: application/json
+
+{ "sourceColumn": 9, "sourceRow": 9, "targetColumn": 4, "targetRow": 4, "orientation": "Horizontal", "expectedVersion": {{move.response.body.$.version}} }
+
 ### Retirer un navire en cliquant sur une de ses cases : 200, la longueur revient dans les restantes
 # @name undo
 POST {{api}}/games/{{create.response.body.$.id}}/ships/remove
 Content-Type: application/json
 
-{ "column": 2, "row": 0, "expectedVersion": {{rotateback.response.body.$.version}} }
+{ "column": 0, "row": 7, "expectedVersion": {{move.response.body.$.version}} }
 
 ### Tirer toute la flotte au hasard : 200, plus rien à poser
 # @name fleet
@@ -77,6 +92,20 @@ POST {{api}}/games/{{create.response.body.$.id}}/fleet/random
 Content-Type: application/json
 
 { "expectedVersion": {{undo.response.body.$.version}} }
+
+### Vider la grille et tout remettre à poser : 200, les cinq longueurs reviennent
+# @name reset
+POST {{api}}/games/{{create.response.body.$.id}}/fleet/reset
+Content-Type: application/json
+
+{ "expectedVersion": {{fleet.response.body.$.version}} }
+
+### Retirer au hasard de nouveau, pour pouvoir démarrer : 200
+# @name refleet
+POST {{api}}/games/{{create.response.body.$.id}}/fleet/random
+Content-Type: application/json
+
+{ "expectedVersion": {{reset.response.body.$.version}} }
 
 ### Démarrer la partie : 200, tirs d'ouverture de l'ordinateur s'il commence
 # @name start
@@ -124,3 +153,17 @@ Content-Type: application/json
 
 ### Lire une partie inconnue (par exemple après un redémarrage du serveur) : 404
 GET {{api}}/games/00000000-0000-0000-0000-000000000000
+
+### Créer une partie contre un adversaire difficile : 201
+### Le niveau est choisi à la création et ne change plus ensuite.
+# @name hard
+POST {{api}}/games?difficulty=Hard
+
+### Supprimer cette partie : 204, sans corps
+DELETE {{api}}/games/{{hard.response.body.$.id}}
+
+### La relire après suppression : 404
+GET {{api}}/games/{{hard.response.body.$.id}}
+
+### Supprimer une partie déjà supprimée : 404
+DELETE {{api}}/games/{{hard.response.body.$.id}}
