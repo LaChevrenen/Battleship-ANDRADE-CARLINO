@@ -1,4 +1,4 @@
-# Vérification manuelle du front
+﻿# Vérification manuelle du front
 
 Le front n'est couvert par aucun test automatisé (choix assumé, voir les limites du README).
 Cette procédure le remplace : elle se déroule à la main, dans le navigateur, et prend quelques
@@ -6,7 +6,7 @@ minutes.
 
 Rien de ce qui suit n'a été exécuté dans un navigateur par l'IA : elle n'en a pas. Les attendus
 décrits ici viennent du code et des réponses du serveur, vérifiées séparément avec curl et par les
-tests. Seul le script de la section 10 a réellement été lancé, contre l'API.
+tests. Seul le script de la section 11 a réellement été lancé, contre l'API.
 
 Prérequis et commandes de lancement : voir le README. Vérifier que le port 7260 est libre avant de
 lancer l'API, sinon une ancienne instance répond à sa place.
@@ -25,21 +25,24 @@ Ouvrir `http://localhost:5274/`, puis les outils de développement, onglet Rése
 
 À vérifier :
 
-- le sélecteur **Niveau de l'ordinateur** (Facile, Normal, Difficile), réglé sur **Normal**, et le
-  bouton **Nouvelle partie** ;
+- le bouton **Nouvelle partie** ;
 - la liste des parties, vide au premier lancement ;
+- dans la barre latérale, les cases **Sons** et **Musique**, cochées ;
+- une nappe musicale calme démarre au premier clic — les navigateurs interdisent tout son avant
+  un geste de l'utilisateur, donc elle ne peut pas partir avant ;
 - onglet Réseau : `GET /games` en `200`.
 
 ## 2. Créer une partie et poser sa flotte
 
-1. Choisir un niveau, puis cliquer sur **Nouvelle partie**.
+1. Cliquer sur **Nouvelle partie**.
 2. L'URL devient `/partie/{identifiant}`.
 
 À vérifier :
 
 - **ma grille est vide** : c'est au joueur de poser sa flotte ;
 - le **port** dessine les navires restants à leur vraie longueur : 5, 4, 3, 3 et 2 cases ;
-- le bandeau de tour et le panneau **État** affichent la phase `Setup` ;
+- le bandeau annonce **Prépare ta flotte** et le panneau **État** affiche la phase `Setup` ;
+- le sélecteur **Niveau de l'ordinateur** est dans la barre de préparation, réglé sur **Normal** ;
 - **Commencer** est désactivé, et **Réinitialiser** aussi tant que rien n'est posé ;
 - onglet Réseau : `POST /games` en `201`, `POST /battleship.GameService/GetGame` en `200` précédé
   de sa pré-vérification `OPTIONS` en `204`.
@@ -92,13 +95,27 @@ C'est le point important : le rouge est une couleur, pas un verrou. Le client n'
 À vérifier : **il ne pivote pas**. Un navire posé ne tourne jamais sur le plateau ; il faut
 d'abord le reprendre en cliquant dessus.
 
-## 4. Placement aléatoire et réinitialisation
+## 4. Le niveau de l'ordinateur
+
+1. Choisir **Difficile** dans la barre de préparation.
+
+À vérifier : `POST /games/{id}/difficulty` répond `200`, et la version de la partie augmente.
+
+2. Appuyer sur `F5`.
+
+À vérifier : le niveau affiché est toujours **Difficile**. Il est retenu par le serveur, pas par
+l'écran.
+
+3. Après avoir cliqué sur **Commencer**, le sélecteur disparaît avec la barre de préparation. Le
+   niveau ne se change plus : une demande à ce moment-là serait refusée en `409 NotInSetup`.
+
+## 5. Placement aléatoire et réinitialisation
 
 - **Placement aléatoire** : les cinq navires apparaissent d'un coup, le port affiche
   `Flotte complète.`, et **Commencer** devient actif.
 - **Réinitialiser** : la grille se vide et les cinq longueurs reviennent au port.
 
-## 5. Démarrer la partie
+## 6. Démarrer la partie
 
 Cliquer sur **Commencer**.
 
@@ -108,7 +125,7 @@ si l'ordinateur a commencé, ses tirs d'ouverture sont visibles sur ma grille.
 Puis cliquer sur une case de **ma** grille : rien ne se passe. Un placement après le démarrage
 serait refusé avec `NotInSetup`, mais l'écran n'envoie même plus la demande.
 
-## 6. Tirer
+## 7. Tirer
 
 Cliquer sur une case de la **grille adverse**.
 
@@ -121,10 +138,14 @@ Cliquer sur une case de la **grille adverse**.
 - après un tir touché, c'est encore mon tour ;
 - onglet Réseau : `POST /games/{id}/shots` en `200`.
 
-**Audio** : décocher **Sons** puis tirer — aucun effet sonore. Recocher, le son revient. Même
-chose pour **Musique**.
+**Audio** : les réglages sont dans la **barre latérale**, donc accessibles depuis toutes les pages.
+Décocher **Sons** puis tirer — aucun effet sonore. Recocher, le son revient.
 
-## 7. Un tir refusé ne change rien
+**Les deux ambiances** : au moment du clic sur **Commencer**, la nappe calme laisse place à un
+thème rythmé — batterie, basse et motif de croches. De retour à l'accueil, la nappe calme revient.
+La transition doit se faire sans coupure ni silence.
+
+## 8. Un tir refusé ne change rien
 
 Cliquer **deux fois** sur la même case de la grille adverse.
 
@@ -137,7 +158,7 @@ Cliquer **deux fois** sur la même case de la grille adverse.
 
 Le front n'anticipe rien : tant que le serveur n'a pas répondu, aucune case ne bouge.
 
-## 8. Reprise, historique et suppression
+## 9. Reprise, historique et suppression
 
 1. Appuyer sur `F5` sur `/partie/{identifiant}` : la partie revient dans le même état, tirs
    compris. L'identifiant vient de l'URL, et l'état est relu par gRPC-Web.
@@ -148,7 +169,7 @@ Le front n'anticipe rien : tant que le serveur n'a pas répondu, aucune case ne 
 À vérifier : `DELETE /games/{id}` répond `204`, la ligne disparaît, et l'ancienne URL affiche
 `Cette partie n'existe plus sur le serveur.`
 
-## 9. Les deux erreurs gRPC
+## 10. Les deux erreurs gRPC
 
 **Partie introuvable.** Arrêter l'API avec `Ctrl+C`, vérifier que le port est libre, la relancer,
 puis recharger une page de partie.
@@ -162,7 +183,7 @@ pour un `POST` en `200`.
 À vérifier : `Identifiant refusé : L'identifiant de la partie n'est pas valide.` Onglet Réseau :
 `grpc-status: 3`.
 
-## 10. Fin de partie
+## 11. Fin de partie
 
 Jouer jusqu'au bout demande une soixantaine de clics. Pour aller droit à l'écran de fin, jouer la
 partie par l'API depuis un troisième terminal, puis recharger la page.
@@ -193,7 +214,19 @@ Ouvrir l'URL affichée.
 Dernier essai lancé pendant l'écriture de cette procédure : partie terminée après 51 tirs du
 joueur, gagnant `Computer`.
 
-## 11. Nouvelle partie
+## 12. Le panneau de règles
+
+Cliquer sur le bouton **?**, en bas à droite.
+
+À vérifier :
+
+- le panneau s'ouvre **centré sur la fenêtre**, pas sur la zone de contenu, et recouvre aussi la
+  barre latérale ;
+- s'il est plus haut que l'écran, il défile tout seul sans que la page bouge ;
+- la croix et un clic à côté le ferment ;
+- le bouton **?** est bien dans le coin de la fenêtre, à toutes les phases de la partie.
+
+## 13. Nouvelle partie
 
 Cliquer sur **Nouvelle partie**.
 
