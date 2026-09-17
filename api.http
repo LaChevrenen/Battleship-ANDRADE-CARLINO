@@ -154,6 +154,46 @@ Content-Type: application/json
 
 { "column": 3, "row": 3, "expectedVersion": {{fire.response.body.$.state.version}}, "specialAttack": true }
 
+### Recharger la jauge : quatre tirs de plus (un seul a compté jusqu'ici), la version repart de fire
+### Le refus ci-dessus n'a rien changé : on repart bien de la version de "fire".
+# @name charge2
+POST {{api}}/games/{{create.response.body.$.id}}/shots
+Content-Type: application/json
+
+{ "column": 1, "row": 0, "expectedVersion": {{fire.response.body.$.state.version}} }
+
+### Troisième tir accepté
+# @name charge3
+POST {{api}}/games/{{create.response.body.$.id}}/shots
+Content-Type: application/json
+
+{ "column": 2, "row": 0, "expectedVersion": {{charge2.response.body.$.state.version}} }
+
+### Quatrième tir accepté
+# @name charge4
+POST {{api}}/games/{{create.response.body.$.id}}/shots
+Content-Type: application/json
+
+{ "column": 3, "row": 0, "expectedVersion": {{charge3.response.body.$.state.version}} }
+
+### Cinquième tir accepté du joueur : la jauge est pleine (playerSpecialAttackProgress = 5)
+# @name charge5
+POST {{api}}/games/{{create.response.body.$.id}}/shots
+Content-Type: application/json
+
+{ "column": 4, "row": 0, "expectedVersion": {{charge4.response.body.$.state.version}} }
+
+### Attaque spéciale chargée : 200, résout jusqu'à 5 cases (la case visée et ses 4 voisines par les
+### côtés) en un seul appel, compté comme un seul tir dans les statistiques. La flotte n'étant pas
+### rejouée à l'identique d'une exécution à l'autre, le résultat de la croix varie ; ce scénario a
+### été rejoué deux fois en vrai contre une instance isolée, une fois avec un touché dans la croix,
+### une fois entièrement à l'eau. Dans les deux cas : 200, et playerSpecialAttackProgress retombé
+### à 0 dans la partie relue ensuite.
+POST {{api}}/games/{{create.response.body.$.id}}/shots
+Content-Type: application/json
+
+{ "column": 6, "row": 6, "expectedVersion": {{charge5.response.body.$.state.version}}, "specialAttack": true }
+
 ### Tirer depuis une version dépassée : 409 StaleVersion, la partie ne change pas
 POST {{api}}/games/{{create.response.body.$.id}}/shots
 Content-Type: application/json

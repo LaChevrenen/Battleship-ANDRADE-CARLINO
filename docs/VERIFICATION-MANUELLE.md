@@ -233,3 +233,54 @@ Cliquer sur **Nouvelle partie**.
 À vérifier : l'URL change d'identifiant, la phase revient à `Setup`, ma grille est vide et le port
 contient de nouveau les cinq navires, et l'ancienne partie reste accessible par son ancienne URL
 tant que l'API tourne.
+
+## 14. Attaque spéciale
+
+Dans le panneau **État**, deux lignes **Attaque spéciale** et **Attaque spéciale (IA)** apparaissent
+dès que la partie est `InProgress`, au format `X/5`.
+
+1. Tirer sur la grille adverse, à l'eau ou touché peu importe, jusqu'à ce que **Attaque spéciale**
+   affiche `5/5 — chargée`. Compter uniquement mes propres tirs acceptés ; les tirs de l'ordinateur
+   ne font pas avancer ma jauge.
+
+À vérifier :
+
+- au-dessus de la grille adverse, un bouton **Attaque spéciale (croix de 5 cases)** apparaît et
+  reste désactivé tant que la jauge n'affiche pas `chargée` ;
+- une fois chargée, le bouton devient cliquable.
+
+2. Cliquer sur ce bouton.
+
+À vérifier :
+
+- le bouton passe en **Annuler l'attaque spéciale**, sur fond orange ;
+- la grille adverse prend un **contour pointillé orange** ;
+- en survolant une case de la grille adverse, une **croix de 5 cases** (la case et ses 4 voisines
+  par les côtés) se surligne en vert ; près d'un bord, seules les voisines qui existent réellement
+  s'allument, et une case déjà tirée dans la croix ne s'allume pas non plus.
+
+3. Cliquer sur une case pour lancer l'attaque.
+
+À vérifier :
+
+- le message commence par `Attaque spéciale !` ;
+- jusqu'à 5 cases se révèlent sur la grille adverse (celles qui existaient et n'avaient pas déjà
+  été tirées) ;
+- le bouton redevient **Attaque spéciale (croix de 5 cases)**, désactivé, et **Attaque spéciale**
+  revient à `0/5` : la jauge se réinitialise que l'attaque touche ou non ;
+- onglet Réseau : `POST /games/{id}/shots` en `200`, corps de requête avec `"specialAttack": true`.
+
+4. Cliquer sur **Annuler l'attaque spéciale** sans avoir cliqué de case.
+
+À vérifier : le mode se désarme, le contour pointillé disparaît, et le clic suivant sur la grille
+adverse est un tir simple.
+
+5. Observer la ligne **Attaque spéciale (IA)** au fil de la partie.
+
+À vérifier : elle progresse à chacun des tirs de l'ordinateur, plafonne à `5/5`, puis retombe à
+`0/5` quand l'ordinateur l'utilise — visible aux tours suivants, sans qu'aucune action ne soit
+requise côté joueur.
+
+Vérifié en vrai contre l'API (pas le navigateur, l'IA n'en a pas) : une charge à 5 tirs suivie
+d'une attaque spéciale répond `200`, résout la croix demandée et remet la jauge à 0 — voir
+`api.http`, section attaque spéciale.

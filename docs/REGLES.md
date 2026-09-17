@@ -51,10 +51,34 @@ et un placement aléatoire.
   s'arrête **immédiatement**, même au milieu d'une série de tirs. Le gagnant est désigné une
   seule fois.
 
+## Attaque spéciale
+
+- **Jauge** : chaque camp a sa propre jauge, qui avance d'une unité à chacun de ses tirs
+  **acceptés** (simple ou spécial), qu'il touche ou rate. Elle se remplit tous les
+  **5 tirs acceptés** de ce camp et **plafonne à une charge** : une fois pleine, elle
+  n'avance plus tant que la charge n'a pas été utilisée.
+- **Déclenchement** : une fois chargée, le tireur peut demander une attaque spéciale au lieu d'un
+  tir simple, sur la même route que le tir. Sans charge, la demande est **refusée**
+  (`SpecialAttackNotCharged`) et ne change rien.
+- **Effet** : elle résout **jusqu'à 5 cases en un seul coup** — la case visée et ses 4 voisines
+  par les côtés (une croix). Les voisines hors grille ou déjà tirées sont **simplement ignorées**,
+  sans provoquer de refus : seule la case visée est soumise aux motifs de refus habituels d'un
+  tir (hors grille, déjà tirée, mauvais tour, partie non commencée ou terminée). Si la case visée
+  est refusée, l'attaque entière l'est aussi et rien n'est joué.
+- **Rejeu** : le tireur garde la main si **au moins une** des cases résolues est *touché* ou
+  *coulé*. La jauge revient à zéro après usage, que l'attaque touche ou non.
+- **Statistiques et historique** : comptée comme **un seul tir**, avec un résultat agrégé (le
+  meilleur des résultats individuels : coulé > touché > à l'eau) et le premier navire coulé
+  rencontré parmi les cases résolues, le cas échéant.
+- **Symétrie** : l'ordinateur suit exactement la même règle. Il utilise son attaque spéciale
+  automatiquement dès qu'elle est chargée, sur la case que sa stratégie de tir aurait choisie de
+  toute façon — aucune heuristique de décision séparée.
+
 ## Tirs refusés
 
 Un tir est **refusé**, avec un message explicite, dans ces cas : case hors grille, **case déjà
-tirée**, ce n'est pas le tour du tireur, partie pas encore commencée, partie terminée.
+tirée**, ce n'est pas le tour du tireur, partie pas encore commencée, partie terminée, ou attaque
+spéciale demandée **sans charge** disponible.
 
 Un tir refusé **ne change rien** : ni la grille, ni le tour, ni le nombre de coups, ni une
 éventuelle série en cours. L'ordinateur ne joue pas en réponse à un tir refusé.
