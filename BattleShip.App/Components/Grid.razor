@@ -27,7 +27,7 @@
                     @for (var column = 0; column < Width; column++)
                     {
                         var cell = new Coordinate(column, currentRow);
-                        <td class="case @CssClass(cell) @HullClass(cell) @PreviewClass(cell) @AnimationClass(cell) @(OnCellClick.HasDelegate ? "cliquable" : null)"
+                        <td class="case @CssClass(cell) @HullClass(cell) @PreviewClass(cell) @AnimationClass(cell) @LastShotClass(cell) @(OnCellClick.HasDelegate ? "cliquable" : null)"
                             @onclick="@(() => OnCellClick.InvokeAsync(cell))"
                             @onmouseenter="@(() => OnCellHover.InvokeAsync(cell))"
                             @onwheel="@(() => OnWheel.InvokeAsync(cell))"
@@ -58,6 +58,10 @@
     [Parameter] public bool PreviewValid { get; set; }
     [Parameter] public Coordinate? AnimatedCell { get; set; }
     [Parameter] public ShotOutcome? AnimatedOutcome { get; set; }
+
+    // Case où l'ordinateur a tiré en dernier, marquée durablement — contrairement à AnimatedCell,
+    // qui ne joue qu'une brève animation d'impact et ne laisse aucune trace une fois finie.
+    [Parameter] public Coordinate? LastComputerShot { get; set; }
 
     // Le composant signale la case cliquée ou survolée ; il ne décide jamais si l'action est permise.
     [Parameter] public EventCallback<Coordinate> OnCellClick { get; set; }
@@ -96,4 +100,7 @@
 
     private string? AnimationClass(Coordinate cell) =>
         AnimatedCell != cell || AnimatedOutcome is null ? null : "tir-anime";
+
+    private string? LastShotClass(Coordinate cell) =>
+        cell == LastComputerShot ? "dernier-tir-ia" : null;
 }

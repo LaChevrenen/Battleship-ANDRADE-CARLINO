@@ -575,7 +575,8 @@ button {
 .preparation-bar,
 .port,
 .hud-card,
-.board-panel {
+.board-panel,
+.custom-game-panel {
     background: rgba(255, 255, 255, 0.82);
     border: 1px solid rgba(148, 163, 184, 0.28);
     box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06);
@@ -610,26 +611,24 @@ button {
 }
 
 .board-panel {
+    max-width: 100%;
     border-radius: 1.2rem;
     padding: 1rem 1rem 0.8rem;
+    /* Une grille personnalisée peut dépasser la largeur de l'écran (jusqu'à 15 colonnes) : elle
+       défile dans sa propre carte plutôt que de casser la mise en page de la page entière. */
+    overflow-x: auto;
 }
 
 .board-panel-opponent {
     align-self: flex-start;
 }
 
+/* Le panneau épouse la taille réelle de sa grille au lieu d'imposer une largeur fixe : sur une
+   grille personnalisée petite ou rectangulaire, une largeur figée à 760px laissait un grand vide
+   blanc à droite de la grille. */
 .board-panel-player {
-    flex: 1;
-    max-width: 760px;
-}
-
-.boards-area.setup-mode .board-panel-opponent {
-    width: min(360px, 100%);
-    align-self: center;
-}
-
-.boards-area.setup-mode .board-panel-player {
-    width: min(760px, 100%);
+    flex: 0 0 auto;
+    max-width: 100%;
 }
 
 .grille {
@@ -773,6 +772,14 @@ button {
 .case.coin-hd::before { border-top-right-radius: 42%; }
 .case.coin-bg::before { border-bottom-left-radius: 42%; }
 .case.coin-bd::before { border-bottom-right-radius: 42%; }
+
+/* outline et non box-shadow : la coque (.case::before, voir plus haut) est peinte par-dessus le
+   box-shadow inset de son propre <td>, ce qui l'aurait rendu invisible sur une case touchée ou
+   coulée — exactement le cas le plus fréquent pour le dernier tir de l'ordinateur. */
+.grille td.dernier-tir-ia {
+    outline: 3px solid rgba(99, 102, 241, 0.95);
+    outline-offset: -3px;
+}
 
 .grille td.apercu-ok {
     box-shadow: inset 0 0 0 3px rgba(34, 197, 94, 0.92);
@@ -1134,4 +1141,114 @@ button:disabled {
     margin: 0;
     color: #31506d;
     line-height: 1.55;
+}
+
+/* Partie personnalisée : même carte que les autres panneaux (.hud-card et consorts), avec sa
+   propre disposition interne. */
+.custom-game-panel {
+    display: grid;
+    gap: 1.1rem;
+    max-width: 30rem;
+    margin-bottom: 2.5rem;
+    padding: 1.25rem 1.4rem;
+    border-radius: 1rem;
+}
+
+.custom-game-panel h2 {
+    margin: 0;
+    font-size: 1.15rem;
+    color: #142238;
+}
+
+.custom-game-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.custom-game-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    color: #45607d;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.custom-game-grid input[type="number"] {
+    width: 5rem;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid rgba(91, 119, 144, 0.35);
+    border-radius: 0.55rem;
+    background: #fff;
+    color: #142238;
+    font: inherit;
+}
+
+.custom-fleet {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.custom-fleet-title {
+    color: #45607d;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.custom-fleet-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #243d58;
+}
+
+.stepper {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.stepper span {
+    min-width: 1.2rem;
+    text-align: center;
+    font-weight: 700;
+}
+
+.stepper button {
+    display: grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    border: 1px solid rgba(91, 119, 144, 0.35);
+    border-radius: 50%;
+    background: #fff;
+    color: #142238;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.stepper button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.custom-adjacency {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    color: #243d58;
+    font-size: 0.92rem;
+    cursor: pointer;
+}
+
+.custom-game-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
 }

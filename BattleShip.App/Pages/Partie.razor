@@ -114,8 +114,8 @@ else
                 <section>
                     <h3>Le plateau</h3>
                     <p>
-                        Une grille de 10 × 10 par camp, et la même flotte des deux côtés :
-                        un navire de 5 cases, un de 4, deux de 3 et un de 2.
+                        Une grille de @state.Player.Width × @state.Player.Height par camp, et la même
+                        flotte des deux côtés : @FleetSummary().
                     </p>
                 </section>
 
@@ -123,8 +123,9 @@ else
                     <h3>Poser sa flotte</h3>
                     <p>
                         Un navire occupe une ligne droite, horizontale ou verticale. Il ne peut ni sortir
-                        de la grille, ni en chevaucher un autre, ni en toucher un autre par un côté.
-                        Le contact en diagonale, lui, est permis.
+                        de la grille, ni en chevaucher un autre@(state.AllowAdjacentShips
+                            ? ". Cette partie autorise deux navires à se toucher par un côté."
+                            : ", ni en toucher un autre par un côté. Le contact en diagonale, lui, est permis.")
                     </p>
                 </section>
 
@@ -165,8 +166,21 @@ else
                 <section>
                     <h3>L'ordinateur</h3>
                     <p>
-                        Il joue avec les mêmes règles que toi et ne sait rien de plus. Il tire au hasard,
-                        puis vise les cases voisines dès qu'il touche.
+                        Il joue avec les mêmes règles que toi et ne sait rien de plus.
+                        @(state.Difficulty switch
+                        {
+                            AiDifficulty.Easy => "Il tire entièrement au hasard, sans jamais viser deux fois la même case.",
+                            AiDifficulty.Hard => "Pour chaque case libre, il évalue combien de placements de navires y sont encore compatibles avec ce qu'il sait, et vise la plus probable.",
+                            _ => "Il tire au hasard, puis vise les cases voisines dès qu'il touche.",
+                        })
+                    </p>
+                </section>
+
+                <section>
+                    <h3>Repères visuels</h3>
+                    <p>
+                        Sur ta grille, un contour distinct marque la dernière case où l'ordinateur a tiré :
+                        pratique pour la retrouver après une série de plusieurs tirs d'affilée.
                     </p>
                 </section>
             </div>
@@ -275,6 +289,7 @@ else
                       Hits="state.Player.Hits"
                       AnimatedCell="animatedCell"
                       AnimatedOutcome="animatedOutcome"
+                      LastComputerShot="lastComputerShot"
                       Preview="preview"
                       PreviewValid="previewValid"
                       OnCellClick="PlaceShip"
@@ -309,11 +324,42 @@ else
     private Coordinate? animatedCell;
     private ShotOutcome? animatedOutcome;
 
+    // Persiste au-delà de l'animation d'impact, contrairement à animatedCell : sert de repère
+    // durable sur ma grille, pas d'un simple flash.
+    private Coordinate? lastComputerShot;
+
     // Cases où le navire choisi tient, telles que le serveur les a calculées.
     private IReadOnlyList<Coordinate> validOrigins = [];
 
     private IReadOnlyCollection<Coordinate> OwnShipCells =>
         state is null ? [] : [.. state.Player.Ships.SelectMany(ship => ship)];
+
+    private static readonly string[] FrenchCounts = ["zéro", "un", "deux", "trois"];
+
+    // Décrit la flotte réellement demandée pour cette partie (personnalisée ou non), qu'elle soit
+    // déjà posée, encore à poser, ou un mélange des deux — le panneau de règles doit rester vrai
+    // à toutes les phases, pas seulement à la création.
+    private string FleetSummary()
+    {
+        if (state is null)
+            return "aucun navire";
+
+        var lengths = state.Player.Ships.Select(ship => ship.Count).Concat(state.Player.RemainingShipLengths);
+        var groups = lengths.GroupBy(length => length).OrderByDescending(group => group.Key).ToList();
+        if (groups.Count == 0)
+            return "aucun navire";
+
+        var parts = groups.Select((group, index) =>
+        {
+            var count = group.Count();
+            var mot = FrenchCounts[Math.Min(count, FrenchCounts.Length - 1)];
+            return index == 0
+                ? $"{mot} navire{(count > 1 ? "s" : "")} de {group.Key} case{(group.Key > 1 ? "s" : "")}"
+                : $"{mot} de {group.Key}";
+        }).ToList();
+
+        return parts.Count == 1 ? parts[0] : string.Join(", ", parts[..^1]) + " et " + parts[^1];
+    }
 
     private int RemainingPlayerShips => state is null
         ? 0
@@ -680,6 +726,8 @@ else
             var shot = turn.ComputerShots[index];
             animatedCell = shot.Target;
             animatedOutcome = shot.Outcome;
+            // Avance avec chaque tir révélé ; se stabilise sur le dernier une fois la série finie.
+            lastComputerShot = shot.Target;
             var player = state.Player;
             var misses = shot.Outcome == ShotOutcome.Miss
                 ? [.. player.Misses, shot.Target]
