@@ -10,16 +10,18 @@ public sealed class FleetUnderConstruction
     private readonly List<Ship> ships = [];
     private readonly List<int> remaining;
 
-    public FleetUnderConstruction(int width, int height, IReadOnlyList<int> shipLengths)
+    public FleetUnderConstruction(int width, int height, IReadOnlyList<int> shipLengths, bool allowAdjacentShips = false)
     {
         Width = width;
         Height = height;
+        AllowAdjacentShips = allowAdjacentShips;
         allLengths = [.. shipLengths];
         remaining = [.. shipLengths];
     }
 
     public int Width { get; }
     public int Height { get; }
+    public bool AllowAdjacentShips { get; }
     public IReadOnlyList<Ship> Ships => ships;
     public IReadOnlyList<int> RemainingLengths => remaining;
     public bool IsComplete => remaining.Count == 0;
@@ -47,7 +49,7 @@ public sealed class FleetUnderConstruction
             return PlacementRejection.LengthNotAvailable;
 
         var cells = PlacementRules.Cells(origin, length, orientation);
-        var rejection = PlacementRules.Check(cells, Width, Height, ships);
+        var rejection = PlacementRules.Check(cells, Width, Height, ships, AllowAdjacentShips);
         if (rejection is not null)
             return rejection;
 
@@ -75,7 +77,7 @@ public sealed class FleetUnderConstruction
             : target with { Column = target.Column - offset };
         var cells = PlacementRules.Cells(turnedOrigin, ship.Cells.Count, turned);
 
-        var rejection = PlacementRules.Check(cells, Width, Height, ships.Where(placed => placed != ship));
+        var rejection = PlacementRules.Check(cells, Width, Height, ships.Where(placed => placed != ship), AllowAdjacentShips);
         if (rejection is not null)
             return rejection;
 
@@ -104,7 +106,7 @@ public sealed class FleetUnderConstruction
             return PlacementRejection.NoShipHere;
 
         var targetCells = PlacementRules.Cells(targetOrigin, ship.Cells.Count, targetOrientation);
-        var rejection = PlacementRules.Check(targetCells, Width, Height, ships.Where(placed => placed != ship));
+        var rejection = PlacementRules.Check(targetCells, Width, Height, ships.Where(placed => placed != ship), AllowAdjacentShips);
         if (rejection is not null)
             return rejection;
 
@@ -125,14 +127,14 @@ public sealed class FleetUnderConstruction
             .. from row in Enumerable.Range(0, Height)
                from column in Enumerable.Range(0, Width)
                let origin = new Coordinate(column, row)
-               where PlacementRules.Check(PlacementRules.Cells(origin, length, orientation), Width, Height, occupied) is null
+               where PlacementRules.Check(PlacementRules.Cells(origin, length, orientation), Width, Height, occupied, AllowAdjacentShips) is null
                select origin
         ];
     }
 
     public bool TryPlaceAtRandom(Random random)
     {
-        var result = RandomFleetPlacer.Place(Width, Height, allLengths, random);
+        var result = RandomFleetPlacer.Place(Width, Height, allLengths, random, AllowAdjacentShips);
         if (result.Ships is null)
             return false;
 

@@ -31,6 +31,24 @@ public sealed class Game(
             random,
             difficulty);
 
+    // Partie personnalisée : contrairement à la flotte par défaut, rien ne garantit qu'une
+    // configuration tienne sur sa grille. null n'est pas une erreur — c'est la réponse prévue par
+    // docs/REGLES.md pour une configuration que le serveur ne parvient pas à placer.
+    public static Game? TryCreate(
+        int width, int height, IReadOnlyList<int> shipLengths, bool allowAdjacentShips,
+        Random random, AiDifficulty difficulty = AiDifficulty.Normal)
+    {
+        var placement = RandomFleetPlacer.Place(width, height, shipLengths, random, allowAdjacentShips);
+        if (placement.Ships is null)
+            return null;
+
+        return new Game(
+            new FleetUnderConstruction(width, height, shipLengths, allowAdjacentShips),
+            new Board(width, height, placement.Ships),
+            random,
+            difficulty);
+    }
+
     // Le niveau se choisit pendant la préparation seulement : une fois la partie commencée, le
     // changer reviendrait à changer d'adversaire en cours de route. Même garde que le placement,
     // et pour la même raison : la flotte lâchée au démarrage rend l'opération sans objet.

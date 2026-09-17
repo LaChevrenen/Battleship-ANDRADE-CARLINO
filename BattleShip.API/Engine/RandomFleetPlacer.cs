@@ -7,7 +7,8 @@ public static class RandomFleetPlacer
     private static readonly Orientation[] Orientations = [Orientation.Horizontal, Orientation.Vertical];
 
     // Un essai est une flotte complète : si un navire n'a plus de position légale, on recommence tout.
-    public static PlacementResult Place(int width, int height, IReadOnlyList<int> shipLengths, Random random)
+    public static PlacementResult Place(
+        int width, int height, IReadOnlyList<int> shipLengths, Random random, bool allowAdjacentShips = false)
     {
         var longestFirst = shipLengths.OrderDescending().ToArray();
         var attempts = 0;
@@ -15,7 +16,7 @@ public static class RandomFleetPlacer
         while (attempts < GameRules.MaxPlacementAttempts)
         {
             attempts++;
-            var ships = TryPlaceFleet(width, height, longestFirst, random);
+            var ships = TryPlaceFleet(width, height, longestFirst, random, allowAdjacentShips);
             if (ships is not null)
                 return new PlacementResult(ships, attempts);
         }
@@ -24,7 +25,7 @@ public static class RandomFleetPlacer
         return new PlacementResult(null, attempts);
     }
 
-    private static List<Ship>? TryPlaceFleet(int width, int height, int[] lengths, Random random)
+    private static List<Ship>? TryPlaceFleet(int width, int height, int[] lengths, Random random, bool allowAdjacentShips)
     {
         var ships = new List<Ship>();
         var occupied = new HashSet<Coordinate>();
@@ -32,7 +33,7 @@ public static class RandomFleetPlacer
         foreach (var length in lengths)
         {
             // Mêmes règles que le placement manuel : la validité est jugée par PlacementRules.
-            var candidates = LegalPositions(width, height, length, occupied).ToList();
+            var candidates = LegalPositions(width, height, length, occupied, allowAdjacentShips).ToList();
             if (candidates.Count == 0)
                 return null;
 
@@ -47,7 +48,8 @@ public static class RandomFleetPlacer
     // Piste si le placement devenait trop lent : reconstituer ici un ensemble de cases bloquées
     // (cases occupées et leurs voisines) au lieu d'interroger PlacementRules pour chaque candidate.
     // Non fait : cela remettrait la règle de contact à deux endroits.
-    private static IEnumerable<Coordinate[]> LegalPositions(int width, int height, int length, IReadOnlySet<Coordinate> occupied)
+    private static IEnumerable<Coordinate[]> LegalPositions(
+        int width, int height, int length, IReadOnlySet<Coordinate> occupied, bool allowAdjacentShips)
     {
         foreach (var orientation in Orientations)
         {
@@ -56,7 +58,7 @@ public static class RandomFleetPlacer
                 for (var row = 0; row < height; row++)
                 {
                     var cells = PlacementRules.Cells(new Coordinate(column, row), length, orientation);
-                    if (PlacementRules.Check(cells, width, height, occupied) is null)
+                    if (PlacementRules.Check(cells, width, height, occupied, allowAdjacentShips) is null)
                         yield return cells;
                 }
             }

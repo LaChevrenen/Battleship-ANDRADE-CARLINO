@@ -12,10 +12,14 @@ public static class PlacementRules
             : origin with { Row = origin.Row + offset })
     ];
 
-    public static PlacementRejection? Check(IReadOnlyCollection<Coordinate> cells, int width, int height, IEnumerable<Ship> placed) =>
-        Check(cells, width, height, placed.SelectMany(ship => ship.Cells).ToHashSet());
+    public static PlacementRejection? Check(
+        IReadOnlyCollection<Coordinate> cells, int width, int height, IEnumerable<Ship> placed, bool allowAdjacentShips = false) =>
+        Check(cells, width, height, placed.SelectMany(ship => ship.Cells).ToHashSet(), allowAdjacentShips);
 
-    public static PlacementRejection? Check(IReadOnlyCollection<Coordinate> cells, int width, int height, IReadOnlySet<Coordinate> occupied)
+    // allowAdjacentShips : réglage de partie personnalisée (docs/REGLES.md). Par défaut le contact
+    // par un côté reste interdit, comme en partie classique ; le contact en diagonale est toujours autorisé.
+    public static PlacementRejection? Check(
+        IReadOnlyCollection<Coordinate> cells, int width, int height, IReadOnlySet<Coordinate> occupied, bool allowAdjacentShips = false)
     {
         if (cells.Any(cell => cell.Column < 0 || cell.Column >= width || cell.Row < 0 || cell.Row >= height))
             return PlacementRejection.OutOfBounds;
@@ -23,8 +27,7 @@ public static class PlacementRules
         if (cells.Any(occupied.Contains))
             return PlacementRejection.Overlap;
 
-        // Contact interdit par un côté ; le contact en diagonale reste autorisé.
-        if (cells.Any(cell => SideNeighbours(cell).Any(occupied.Contains)))
+        if (!allowAdjacentShips && cells.Any(cell => SideNeighbours(cell).Any(occupied.Contains)))
             return PlacementRejection.AdjacentShip;
 
         return null;

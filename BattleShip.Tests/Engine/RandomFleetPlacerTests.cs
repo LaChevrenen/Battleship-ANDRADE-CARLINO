@@ -129,6 +129,26 @@ public sealed class RandomFleetPlacerTests
         Assert.Equal(1, result.AttemptsUsed);
     }
 
+    [Fact]
+    public void Sur_une_grille_de_deux_cases_le_contact_interdit_empeche_deux_navires_d_une_case()
+    {
+        // Sur 2x1, les deux seules cases sont voisines par un côté : la deuxième n'a plus de place
+        // légale une fois la première occupée, tant que le contact reste interdit.
+        var result = RandomFleetPlacer.Place(2, 1, [1, 1], new Random(0));
+
+        Assert.Null(result.Ships);
+    }
+
+    [Fact]
+    public void Autoriser_le_contact_rend_placable_une_configuration_sinon_impossible()
+    {
+        // Exactement la même grille et la même flotte que le test précédent : seul le réglage change.
+        var result = RandomFleetPlacer.Place(2, 1, [1, 1], new Random(0), allowAdjacentShips: true);
+
+        Assert.NotNull(result.Ships);
+        Assert.Equal<Coordinate>([new(0, 0), new(1, 0)], result.Ships.SelectMany(ship => ship.Cells).OrderBy(cell => cell.Column));
+    }
+
     private static bool IsConsecutive(int[] sortedValues) =>
         sortedValues.Zip(sortedValues.Skip(1)).All(pair => pair.Second == pair.First + 1);
 

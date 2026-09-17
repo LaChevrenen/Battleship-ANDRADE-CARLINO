@@ -62,4 +62,31 @@ public sealed class PlacementRulesTests
 
         Assert.Null(PlacementRules.Check(cells, 10, 10, Placed));
     }
+
+    [Theory]
+    [InlineData(4, 3)] // au-dessus
+    [InlineData(3, 4)] // à gauche
+    [InlineData(4, 5)] // en dessous
+    public void Un_navire_qui_touche_un_autre_par_un_cote_est_accepte_si_le_contact_est_autorise(int column, int row)
+    {
+        var cells = PlacementRules.Cells(new(column, row), 1, Orientation.Horizontal);
+
+        Assert.Null(PlacementRules.Check(cells, 10, 10, Placed, allowAdjacentShips: true));
+    }
+
+    [Fact]
+    public void Le_debordement_reste_refuse_meme_avec_le_contact_autorise()
+    {
+        var cells = PlacementRules.Cells(new(8, 0), 3, Orientation.Horizontal);
+
+        Assert.Equal(PlacementRejection.OutOfBounds, PlacementRules.Check(cells, 10, 10, Placed, allowAdjacentShips: true));
+    }
+
+    [Fact]
+    public void Le_chevauchement_reste_refuse_meme_avec_le_contact_autorise()
+    {
+        var cells = PlacementRules.Cells(new(5, 2), 3, Orientation.Vertical);
+
+        Assert.Equal(PlacementRejection.Overlap, PlacementRules.Check(cells, 10, 10, Placed, allowAdjacentShips: true));
+    }
 }
