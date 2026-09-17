@@ -87,8 +87,8 @@ public sealed class GameApiClient(HttpClient http)
     public async Task<TurnResult> StartAsync(Guid id) =>
         await ReadTurn(await http.PostAsync($"/games/{id}/start", null));
 
-    public async Task<TurnResult> FireAsync(Guid id, int column, int row, int expectedVersion) =>
-        await ReadTurn(await http.PostAsJsonAsync($"/games/{id}/shots", new FireRequest(column, row, expectedVersion), Json));
+    public async Task<TurnResult> FireAsync(Guid id, int column, int row, int expectedVersion, bool specialAttack = false) =>
+        await ReadTurn(await http.PostAsJsonAsync($"/games/{id}/shots", new FireRequest(column, row, expectedVersion, specialAttack), Json));
 
     private static async Task<TurnResult> ReadTurn(HttpResponseMessage response)
     {

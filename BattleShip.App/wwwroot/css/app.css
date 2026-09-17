@@ -799,6 +799,34 @@ button {
     z-index: 1;
 }
 
+/* Pointillé orange, distinct du vert/rouge du placement et de l'indigo du dernier tir de l'IA :
+   signale que le prochain clic sur cette grille déclenchera l'attaque spéciale, pas un tir simple. */
+.grille.mode-speciale {
+    outline: 3px dashed rgba(249, 115, 22, 0.75);
+    outline-offset: 4px;
+    border-radius: 12px;
+}
+
+.special-attack-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.7rem;
+}
+
+.special-attack-gauge {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #9a3412;
+}
+
+.special-attack-toggle.active {
+    background: linear-gradient(135deg, #ea580c 0%, #7c2d12 100%);
+    color: white;
+    border-color: transparent;
+}
+
 /* Hauteur et colonnes fixes : le contenu change entre « flotte a poser » et « flotte complete »,
    et sans ca le bandeau se replie, change de hauteur et fait sauter tout l'ecran. */
 .preparation-bar {

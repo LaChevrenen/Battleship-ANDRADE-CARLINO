@@ -148,6 +148,20 @@ else
                 </section>
 
                 <section>
+                    <h3>Attaque spéciale</h3>
+                    <p>
+                        Chaque camp charge sa jauge d'une unité à chacun de ses tirs acceptés
+                        (@state.SpecialAttackChargeInterval tirs pour une charge pleine, plafonnée à une seule).
+                        Une fois chargée, l'attaque spéciale touche une croix de cinq cases — la case visée et
+                        ses quatre voisines par les côtés — en un seul coup, et consomme aussitôt la charge.
+                        Aux bords de la grille ou sur une case déjà tirée, la voisine correspondante est
+                        simplement ignorée. Tu gardes la main si au moins une des cases touchées est un
+                        touché ou un coulé. L'ordinateur suit exactement la même règle et l'utilise
+                        automatiquement dès qu'il est chargé.
+                    </p>
+                </section>
+
+                <section>
                     <h3>Gagner</h3>
                     <p>
                         Le premier qui coule toute la flotte adverse l'emporte, et la partie s'arrête
@@ -246,6 +260,17 @@ else
                     <span>Coups</span>
                     <strong>@state.Statistics.TotalShots</strong>
                 </div>
+                @if (state.Phase == GamePhase.InProgress)
+                {
+                    <div class="hud-item">
+                        <span>Attaque spéciale</span>
+                        <strong>@state.PlayerSpecialAttackProgress/@state.SpecialAttackChargeInterval@(PlayerSpecialAttackCharged ? " — chargée" : "")</strong>
+                    </div>
+                    <div class="hud-item">
+                        <span>Attaque spéciale (IA)</span>
+                        <strong>@state.ComputerSpecialAttackProgress/@state.SpecialAttackChargeInterval</strong>
+                    </div>
+                }
             </div>
             @if (state.Statistics.History.Count > 0)
             {
@@ -266,6 +291,19 @@ else
             @if (state.Phase != GamePhase.Setup)
             {
                 <div class="board-panel board-panel-opponent">
+                    @if (state.Phase == GamePhase.InProgress)
+                    {
+                        <div class="special-attack-bar">
+                            <span class="special-attack-gauge">
+                                Attaque spéciale : @state.PlayerSpecialAttackProgress/@state.SpecialAttackChargeInterval
+                            </span>
+                            <button class="ghost special-attack-toggle @(specialAttackMode ? "active" : null)"
+                                    disabled="@(!PlayerSpecialAttackCharged || busy || state.CurrentTurn != Side.Player)"
+                                    @onclick="ToggleSpecialAttack">
+                                @(specialAttackMode ? "Annuler l'attaque spéciale" : "Attaque spéciale (croix de 5 cases)")
+                            </button>
+                        </div>
+                    }
                     <Grid Title="Grille adverse"
                           Width="state.Opponent.Width"
                           Height="state.Opponent.Height"
@@ -274,8 +312,12 @@ else
                           Hits="state.Opponent.Hits"
                           AnimatedCell="animatedCell"
                           AnimatedOutcome="animatedOutcome"
-                          RootCssClass="@(busy || state.CurrentTurn != Side.Player ? "primary-grid grid-locked" : "primary-grid")"
-                          OnCellClick="Fire" />
+                          Preview="OpponentPreview"
+                          PreviewValid="true"
+                          RootCssClass="@OpponentGridClass"
+                          OnCellClick="Fire"
+                          OnCellHover="ShowSpecialAttackPreview"
+                          OnLeave="ClearSpecialAttackPreview" />
                 </div>
             }
 
@@ -328,6 +370,11 @@ else
     // durable sur ma grille, pas d'un simple flash.
     private Coordinate? lastComputerShot;
 
+    // Armée par le bouton, désarmée après chaque tir (réussi ou non) : le serveur remet la jauge à
+    // zéro dans les deux cas, donc rien ne sert de garder le mode actif au-delà d'un coup.
+    private bool specialAttackMode;
+    private Coordinate? specialAttackHover;
+
     // Cases où le navire choisi tient, telles que le serveur les a calculées.
     private IReadOnlyList<Coordinate> validOrigins = [];
 
@@ -373,6 +420,57 @@ else
 
     private IReadOnlyList<IReadOnlyList<Coordinate>> VisibleShips => state?.Player.Ships ?? [];
 
+    private bool PlayerSpecialAttackCharged =>
+        state is not null && state.PlayerSpecialAttackProgress >= state.SpecialAttackChargeInterval;
+
+    private string OpponentGridClass =>
+        (busy || state?.CurrentTurn != Side.Player ? "primary-grid grid-locked" : "primary-grid")
+        + (specialAttackMode ? " mode-speciale" : string.Empty);
+
+    // Reflète honnêtement ce que le serveur résoudra : les voisines hors grille ou déjà tirées
+    // sont exclues ici aussi, pour ne pas promettre une case que l'attaque va en fait ignorer.
+    private IReadOnlyCollection<Coordinate> OpponentPreview =>
+        specialAttackMode && specialAttackHover is { } hover ? SpecialAttackCross(hover) : [];
+
+    private IReadOnlyList<Coordinate> SpecialAttackCross(Coordinate center)
+    {
+        if (state is null)
+            return [];
+
+        var width = state.Opponent.Width;
+        var height = state.Opponent.Height;
+        var alreadyTargeted = state.Opponent.Misses
+            .Concat(state.Opponent.Hits)
+            .Concat(state.Opponent.SunkShips.SelectMany(ship => ship))
+            .ToHashSet();
+
+        Coordinate[] candidates =
+        [
+            center,
+            center with { Column = center.Column - 1 },
+            center with { Column = center.Column + 1 },
+            center with { Row = center.Row - 1 },
+            center with { Row = center.Row + 1 },
+        ];
+
+        return [.. candidates.Where(cell =>
+            cell.Column >= 0 && cell.Column < width && cell.Row >= 0 && cell.Row < height
+            && !alreadyTargeted.Contains(cell))];
+    }
+
+    private void ToggleSpecialAttack()
+    {
+        if (!PlayerSpecialAttackCharged || busy || state?.CurrentTurn != Side.Player)
+            return;
+
+        specialAttackMode = !specialAttackMode;
+        specialAttackHover = null;
+    }
+
+    private void ShowSpecialAttackPreview(Coordinate cell) => specialAttackHover = cell;
+
+    private void ClearSpecialAttackPreview() => specialAttackHover = null;
+
     // L'ambiance suit la phase : le combat commence quand la partie commence, et retombe à la
     // fin. Le service ne traverse l'interop que sur un vrai changement.
     protected override Task OnAfterRenderAsync(bool firstRender) =>
@@ -382,6 +480,10 @@ else
     {
         message = null;
         refusal = null;
+        // Blazor réutilise cette instance de page en changeant seulement Id (ex. « Nouvelle
+        // partie ») : sans ça, un mode armé sur l'ancienne partie resterait armé sur la nouvelle.
+        specialAttackMode = false;
+        specialAttackHover = null;
         return LoadState();
     }
 
@@ -680,7 +782,14 @@ else
         busy = true;
         refusal = null;
 
-        var result = await Answered(() => Api.FireAsync(Guid.Parse(Id), target.Column, target.Row, state.Version));
+        // Désarmée avant même la réponse du serveur : qu'elle réussisse ou soit refusée, la jauge
+        // ne reste jamais pleine côté joueur après ce coup (elle se remet à zéro dans les deux cas
+        // d'issue acceptée, et un refus ne consomme rien à retenter dans ce mode).
+        var special = specialAttackMode;
+        specialAttackMode = false;
+        specialAttackHover = null;
+
+        var result = await Answered(() => Api.FireAsync(Guid.Parse(Id), target.Column, target.Row, state.Version, special));
         if (result is null)
         {
             busy = false;
@@ -689,7 +798,8 @@ else
 
         if (result.Turn is { } turn)
         {
-            await AnimateTurn(turn, Describe(turn), target);
+            var prefix = special ? "Attaque spéciale ! " : string.Empty;
+            await AnimateTurn(turn, prefix + Describe(turn), target);
             await Audio.PlayAsync(turn.PlayerOutcome == ShotOutcome.Sunk ? "sunk" : turn.PlayerOutcome == ShotOutcome.Hit ? "hit" : "miss");
             if (turn.State.Phase == GamePhase.Finished && turn.State.Winner == Side.Player)
                 await Audio.PlayAsync("win");
