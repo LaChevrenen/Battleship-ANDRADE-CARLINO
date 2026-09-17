@@ -1,4 +1,4 @@
-# Battleship-ANDRADE-CARLINO
+﻿# Battleship-ANDRADE-CARLINO
 
 Bataille navale jouable dans le navigateur : API ASP.NET Core (Minimal API et gRPC-Web) et client
 Blazor WebAssembly.
@@ -69,7 +69,8 @@ dotnet test BattleShip.slnx
 - **Reprendre un navire déjà posé** : cliquer dessus le retire de la grille et le remet en main,
   dans l'état d'un navire à poser. Il se réoriente à la molette et se repose où l'on veut. Un
   navire resté sur la grille ne pivote jamais sous la molette.
-- **Trois niveaux pour l'ordinateur**, choisis à la création : Facile, Normal, Difficile.
+- **Trois niveaux pour l'ordinateur** — Facile, Normal, Difficile — choisis **pendant la
+  préparation**, et modifiables tant que la partie n'a pas commencé.
 - Toutes les règles sont appliquées côté serveur : placement, tours, rejeu tant qu'on touche,
   refus explicites, victoire.
 - Les positions des navires adverses non coulés ne sortent jamais du serveur.
@@ -79,8 +80,11 @@ dotnet test BattleShip.slnx
   supprimée.
 - **Statistiques de fin de partie** : nombre de tirs, tirs au but, tirs à l'eau, pourcentage de
   réussite, durée, et historique des tirs.
-- **Sons et musique**, activables ou coupables depuis l'écran de jeu ; la musique est synthétisée
-  dans le navigateur, sans ressource externe.
+- **Sons et musique**, réglables depuis la **barre latérale**, donc depuis n'importe quelle page.
+  Tout est synthétisé dans le navigateur, sans ressource externe : effets de tir, et deux
+  ambiances musicales — une nappe calme à l'accueil et pendant la préparation, un thème rythmé
+  pendant la partie.
+- **Panneau de règles** ouvert par le bouton `?`, en bas à droite de l'écran de jeu.
 - Requêtes HTTP d'exemple dans `api.http`.
 
 ## Arbitrages
