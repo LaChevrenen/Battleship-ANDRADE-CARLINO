@@ -1,4 +1,4 @@
-html, body {
+﻿html, body {
     font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     background: linear-gradient(180deg, #f5f7fb 0%, #edf3fa 100%);
     color: #142238;
@@ -54,11 +54,13 @@ body {
 
 .difficulty-control {
     display: flex;
+    flex: 0 0 auto;
     flex-direction: column;
     gap: 0.4rem;
 }
 
 .difficulty-control label {
+    white-space: nowrap;
     color: #49627b;
     font-size: 0.76rem;
     font-weight: 700;
@@ -391,7 +393,11 @@ h1, h2, h3, p {
 
 @keyframes page-enter {
     from { opacity: 0; transform: translateY(0.7rem); }
-    to { opacity: 1; transform: translateY(0); }
+    /* « none » et non « translateY(0) » : avec animation-fill-mode both, la valeur finale reste
+       appliquée, et un transform, même nul, fait d'un élément le référent des position: fixed
+       qu'il contient. Le panneau de règles se calait alors sur la zone de contenu, pas sur la
+       fenêtre, et débordait en bas. */
+    to { opacity: 1; transform: none; }
 }
 
 @keyframes loading-orbit {
@@ -786,19 +792,27 @@ button {
     z-index: 1;
 }
 
+/* Hauteur et colonnes fixes : le contenu change entre « flotte a poser » et « flotte complete »,
+   et sans ca le bandeau se replie, change de hauteur et fait sauter tout l'ecran. */
 .preparation-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
+    min-height: 6rem;
     border-radius: 1rem;
     padding: 0.9rem 1rem;
     margin-bottom: 1rem;
 }
 
 .status-copy {
+    display: flex;
+    align-items: center;
+    flex: 1 1 20rem;
+    min-height: 2.9rem;
     color: #1d3a57;
     font-size: 0.95rem;
+    line-height: 1.45;
 }
 
 .fleet-ready {
@@ -807,8 +821,8 @@ button {
 
 .action-row {
     display: flex;
+    flex: 0 0 auto;
     gap: 0.75rem;
-    flex-wrap: wrap;
 }
 
 button.primary,
@@ -969,11 +983,11 @@ button:disabled {
     .preparation-bar {
         flex-direction: column;
         align-items: flex-start;
+        min-height: 0;
     }
 
-    .sound-controls {
-        width: 100%;
-        justify-content: space-between;
+    .status-copy {
+        min-height: 0;
     }
 
     .grille.compact .case,
@@ -1012,24 +1026,7 @@ button:disabled {
     white-space: nowrap;
 }
 
-.sound-controls {
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    padding: 0.45rem 0.65rem;
-    border: 1px solid rgba(148, 163, 184, 0.34);
-    border-radius: 0.7rem;
-    background: rgba(241, 246, 251, 0.72);
-}
 
-.sound-controls-title {
-    padding-right: 0.2rem;
-    color: #6b8198;
-    font-size: 0.68rem;
-    font-weight: 800;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-}
 
 .game-starting {
     animation: game-start 0.7s ease-out both;
