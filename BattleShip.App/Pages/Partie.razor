@@ -241,10 +241,7 @@ else
         ? 0
         : 5 - state.Opponent.SunkShips.Count;
 
-    private IReadOnlyList<IReadOnlyList<Coordinate>> VisibleShips =>
-        state is null || selectedPlacedShip is null
-            ? state?.Player.Ships ?? []
-            : [.. state.Player.Ships.Where(ship => !ship.SequenceEqual(selectedPlacedShip))];
+    private IReadOnlyList<IReadOnlyList<Coordinate>> VisibleShips => state?.Player.Ships ?? [];
 
     protected override Task OnParametersSetAsync()
     {
