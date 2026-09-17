@@ -289,6 +289,21 @@ else
             @if (state.Phase != GamePhase.Setup)
             {
                 <div class="board-panel board-panel-opponent">
+                    <Grid Title="Grille adverse"
+                          Width="state.Opponent.Width"
+                          Height="state.Opponent.Height"
+                          SunkShips="state.Opponent.SunkShips"
+                          Misses="state.Opponent.Misses"
+                          Hits="state.Opponent.Hits"
+                          AnimatedCell="animatedCell"
+                          AnimatedOutcome="animatedOutcome"
+                          AnimatedSpecial="animatedSpecial"
+                          Preview="OpponentPreview"
+                          PreviewValid="true"
+                          RootCssClass="@OpponentGridClass"
+                          OnCellClick="Fire"
+                          OnCellHover="ShowSpecialAttackPreview"
+                          OnLeave="ClearSpecialAttackPreview" />
                     @if (state.Phase == GamePhase.InProgress && state.SpecialAttacksEnabled)
                     {
                         <div class="special-attack-gauge @(PlayerSpecialAttackCharged ? "charged" : null)"
@@ -305,39 +320,10 @@ else
                             </span>
                         </div>
                     }
-                    <Grid Title="Grille adverse"
-                          Width="state.Opponent.Width"
-                          Height="state.Opponent.Height"
-                          SunkShips="state.Opponent.SunkShips"
-                          Misses="state.Opponent.Misses"
-                          Hits="state.Opponent.Hits"
-                          AnimatedCell="animatedCell"
-                          AnimatedOutcome="animatedOutcome"
-                          AnimatedSpecial="animatedSpecial"
-                          Preview="OpponentPreview"
-                          PreviewValid="true"
-                          RootCssClass="@OpponentGridClass"
-                          OnCellClick="Fire"
-                          OnCellHover="ShowSpecialAttackPreview"
-                          OnLeave="ClearSpecialAttackPreview" />
                 </div>
             }
 
             <div class="board-panel board-panel-player">
-                @if (state.Phase == GamePhase.InProgress && state.SpecialAttacksEnabled)
-                {
-                    <div class="special-attack-gauge computer @(state.ComputerSpecialAttackProgress >= state.SpecialAttackChargeInterval ? "charged" : null)"
-                         title="@($"Attaque spéciale de l'ordinateur : {state.ComputerSpecialAttackProgress}/{state.SpecialAttackChargeInterval}")">
-                        <span class="special-attack-symbol" aria-hidden="true">✦</span>
-                        <span class="special-attack-pips">
-                            @for (var i = 0; i < state.SpecialAttackChargeInterval; i++)
-                            {
-                                var filled = i < state.ComputerSpecialAttackProgress;
-                                <span class="special-attack-pip @(filled ? "filled" : null)"></span>
-                            }
-                        </span>
-                    </div>
-                }
                 <Grid Title="Ma grille"
                       Width="state.Player.Width"
                       Height="state.Player.Height"
@@ -356,6 +342,20 @@ else
                       OnLeave="ClearHover"
                       OnWheel="RotateHeldShip"
                       RootCssClass="@(state.Phase == GamePhase.Setup ? "primary-grid" : "compact")" />
+                @if (state.Phase == GamePhase.InProgress && state.SpecialAttacksEnabled)
+                {
+                    <div class="special-attack-gauge computer @(state.ComputerSpecialAttackProgress >= state.SpecialAttackChargeInterval ? "charged" : null)"
+                         title="@($"Attaque spéciale de l'ordinateur : {state.ComputerSpecialAttackProgress}/{state.SpecialAttackChargeInterval}")">
+                        <span class="special-attack-symbol" aria-hidden="true">✦</span>
+                        <span class="special-attack-pips">
+                            @for (var i = 0; i < state.SpecialAttackChargeInterval; i++)
+                            {
+                                var filled = i < state.ComputerSpecialAttackProgress;
+                                <span class="special-attack-pip @(filled ? "filled" : null)"></span>
+                            }
+                        </span>
+                    </div>
+                }
             </div>
         </div>
     </div>

@@ -641,17 +641,25 @@ button {
     align-items: flex-start;
 }
 
+/* flex-shrink à 1, pas 0 : un flex-shrink nul empêchait ce panneau de rétrécir en dessous de la
+   largeur naturelle de sa grille, ce qui désactivait de fait le overflow-x: auto de .board-panel
+   (rien ne le compressait jamais assez pour qu'il ait besoin de défiler). Sur une grille
+   personnalisée large, les deux panneaux débordaient alors chacun de leur côté du centrage de
+   .boards-area, jusqu'à peindre par-dessus la barre latérale. min-width: 0 est nécessaire en plus
+   du flex-shrink : un flex-item ne descend jamais sous la largeur minimale de son contenu (ici,
+   celle du tableau) sans lui. */
 .boards-area.battle-mode .board-panel-opponent {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    min-width: 0;
 }
 
 .boards-area.battle-mode .board-panel-player {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
     max-width: none;
+    min-width: 0;
 }
 
 .board-panel {
-    position: relative;
     max-width: 100%;
     border-radius: 1.2rem;
     padding: 1rem 1rem 0.8rem;
@@ -861,23 +869,20 @@ button {
     border-radius: 12px;
 }
 
-/* Badge flottant en bas à gauche du panneau plutôt qu'une ligne de texte dans une barre : l'état
-   se lit d'un coup d'œil, sans faire bouger le reste de la mise en page quand il apparaît. Posé
-   sur .board-panel (position: relative), pas sur .grille, pour rester à la même place quelle que
-   soit la taille de la grille — y compris une grille personnalisée qui défile horizontalement. */
+/* Badge sous la grille plutôt qu'une ligne de texte dans une barre : l'état se lit d'un coup
+   d'œil. D'abord posé en position: absolute en bas à gauche du panneau, mais une grille assez
+   grande occupe tout le panneau jusqu'à son coin bas-gauche : le badge se peignait alors par-
+   dessus ses propres cases (touché/coulé y compris) plutôt qu'à côté. Repris dans le fil normal,
+   sous le tableau, il ne peut plus recouvrir aucune case, quelle que soit la taille de la grille. */
 .special-attack-gauge {
-    position: absolute;
-    left: 0.7rem;
-    bottom: 0.7rem;
-    z-index: 5;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 0.45rem;
+    margin-top: 0.6rem;
     padding: 0.4rem 0.65rem;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.9);
     box-shadow: 0 6px 16px rgba(15, 23, 42, 0.16);
-    pointer-events: none;
 }
 
 /* Grisé tant qu'elle charge, coloré une fois prête : la couleur porte l'information, pas un texte. */
