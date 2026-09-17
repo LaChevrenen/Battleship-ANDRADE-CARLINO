@@ -2,10 +2,9 @@
 @using BattleShip.App.Services
 @using BattleShip.Models
 @using BattleShip.Models.Dtos
-@using Microsoft.JSInterop
 @inject GameApiClient Api
 @inject NavigationManager Navigation
-@inject IJSRuntime Js
+@inject GameAudio Audio
 
 <PageTitle>Bataille navale</PageTitle>
 
@@ -104,6 +103,9 @@ else if (games.Any())
     private IEnumerable<GameSummaryDto> ActiveGames => games.Where(game => game.Phase != GamePhase.Finished);
     private IEnumerable<GameSummaryDto> FinishedGames => games.Where(game => game.Phase == GamePhase.Finished);
 
+    // De retour à l'accueil, on quitte l'ambiance de combat.
+    protected override Task OnAfterRenderAsync(bool firstRender) => Audio.SetMoodAsync("calm");
+
     protected override async Task OnInitializedAsync()
     {
         try
@@ -124,7 +126,6 @@ else if (games.Any())
     {
         creating = true;
         error = null;
-        await Js.InvokeVoidAsync("battleMusic", false);
 
         try
         {

@@ -1,4 +1,4 @@
-@page "/partie/{Id}"
+﻿@page "/partie/{Id}"
 @using BattleShip.App.Components
 @using BattleShip.App.Services
 @using BattleShip.Models
@@ -6,11 +6,10 @@
 @* Alias : BattleShip.Protocol et BattleShip.Models déclarent tous deux Coordinate, GamePhase et Side. *@
 @using Proto = BattleShip.Protocol
 @using Grpc.Core
-@using Microsoft.JSInterop
 @inject GameApiClient Api
 @inject Proto.GameService.GameServiceClient GameClient
 @inject NavigationManager Navigation
-@inject IJSRuntime Js
+@inject GameAudio Audio
 
 <PageTitle>Partie @Id</PageTitle>
 
@@ -94,15 +93,6 @@ else
                     <button class="ghost" @onclick="PlaceFleetAtRandom" disabled="@busy">Placement aléatoire</button>
                     <button class="ghost" @onclick="ResetFleet" disabled="@(busy || state.Player.Ships.Count == 0)">Réinitialiser</button>
                     <button class="primary" @onclick="Start" disabled="@(busy || state.Player.RemainingShipLengths.Count > 0)">Commencer</button>
-                </div>
-                <div class="sound-controls" aria-label="Réglages audio">
-                    <span class="sound-controls-title">Audio</span>
-                    <label class="sound-toggle">
-                        <input type="checkbox" @bind="soundEnabled" /> Sons
-                    </label>
-                    <label class="sound-toggle">
-                        <input type="checkbox" @bind="musicEnabled" @bind:after="ToggleMusic" /> Musique
-                    </label>
                 </div>
             </div>
         }
@@ -307,8 +297,6 @@ else
     private string? error;
     private bool busy;
     private bool starting;
-    private bool soundEnabled = true;
-    private bool musicEnabled = true;
     private bool rulesOpen;
     private int? selectedLength;
     private int? selectedPortIndex;
@@ -338,6 +326,11 @@ else
         : 5 - state.Opponent.SunkShips.Count;
 
     private IReadOnlyList<IReadOnlyList<Coordinate>> VisibleShips => state?.Player.Ships ?? [];
+
+    // L'ambiance suit la phase : le combat commence quand la partie commence, et retombe à la
+    // fin. Le service ne traverse l'interop que sur un vrai changement.
+    protected override Task OnAfterRenderAsync(bool firstRender) =>
+        Audio.SetMoodAsync(state?.Phase == GamePhase.InProgress ? "combat" : "calm");
 
     protected override Task OnParametersSetAsync()
     {
@@ -619,8 +612,7 @@ else
             await AnimateTurn(turn, turn.ComputerShots.Count == 0
                 ? "À toi de jouer."
                 : $"L'ordinateur a commencé : {Describe(turn.ComputerShots)}");
-            await PlaySound(turn.ComputerShots.Count == 0 ? "hit" : "start");
-            await ToggleMusic();
+            await Audio.PlayAsync(turn.ComputerShots.Count == 0 ? "hit" : "start");
         }
         else
         {
@@ -652,9 +644,9 @@ else
         if (result.Turn is { } turn)
         {
             await AnimateTurn(turn, Describe(turn), target);
-            await PlaySound(turn.PlayerOutcome == ShotOutcome.Sunk ? "sunk" : turn.PlayerOutcome == ShotOutcome.Hit ? "hit" : "miss");
-            if (turn.State.Phase == GamePhase.Finished)
-                await StopMusic();
+            await Audio.PlayAsync(turn.PlayerOutcome == ShotOutcome.Sunk ? "sunk" : turn.PlayerOutcome == ShotOutcome.Hit ? "hit" : "miss");
+            if (turn.State.Phase == GamePhase.Finished && turn.State.Winner == Side.Player)
+                await Audio.PlayAsync("win");
         }
         else
         {
@@ -782,16 +774,4 @@ else
         ? "-"
         : value < 60 ? $"{value}s" : $"{value / 60}m {value % 60:00}s";
 
-    private async Task PlaySound(string kind)
-    {
-        if (soundEnabled)
-            await Js.InvokeVoidAsync("battleSound", kind);
-    }
-
-    private async Task ToggleMusic()
-    {
-        await Js.InvokeVoidAsync("battleMusic", musicEnabled);
-    }
-
-    private Task StopMusic() => Js.InvokeVoidAsync("battleMusic", false).AsTask();
 }

@@ -1,4 +1,7 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
+@using BattleShip.App.Services
+@inject GameAudio Audio
+
 <div class="page-shell">
     <aside class="sidebar-panel">
         <NavMenu />
@@ -10,3 +13,13 @@
         </article>
     </main>
 </div>
+
+@code {
+    // La mise en page entoure toutes les pages : c'est le seul endroit d'où l'ambiance peut
+    // démarrer une fois pour toutes, sans repartir de zéro à chaque navigation.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await Audio.StartAsync();
+    }
+}

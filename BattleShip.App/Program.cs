@@ -15,6 +15,8 @@ var apiAddress = builder.Configuration["ApiAddress"]
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiAddress) });
 builder.Services.AddScoped<GameApiClient>();
+// Une seule instance pour toute la session : la musique traverse les changements de page.
+builder.Services.AddScoped<GameAudio>();
 // GrpcWebHandler : le navigateur ne sait pas parler gRPC natif, il envoie du gRPC-Web sur HTTP/1.1.
 builder.Services.AddScoped(sp => new GameService.GameServiceClient(
     GrpcChannel.ForAddress(apiAddress, new GrpcChannelOptions

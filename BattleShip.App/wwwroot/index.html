@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -12,88 +12,7 @@
     <link rel="icon" type="image/png" href="favicon.png" />
     <link href="BattleShip.App.styles.css" rel="stylesheet" />
     <script type="importmap"></script>
-    <script>
-        let battleAudioContext;
-        let battleMasterGain;
-        let battleMusicTimer;
-        let battleMusicStep = 0;
-
-        const battleAudio = () => {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContext) return null;
-            battleAudioContext ??= new AudioContext();
-            battleMasterGain ??= battleAudioContext.createGain();
-            battleMasterGain.gain.value = 0.5;
-            battleMasterGain.connect(battleAudioContext.destination);
-            if (battleAudioContext.state === 'suspended') battleAudioContext.resume();
-            return battleAudioContext;
-        };
-
-        const battleTone = (context, frequency, start, duration, volume, type = 'triangle') => {
-            const oscillator = context.createOscillator();
-            const gain = context.createGain();
-            oscillator.frequency.value = frequency;
-            oscillator.type = type;
-            gain.gain.setValueAtTime(0.0001, start);
-            gain.gain.exponentialRampToValueAtTime(volume, start + 0.025);
-            gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-            oscillator.connect(gain).connect(battleMasterGain);
-            oscillator.start(start);
-            oscillator.stop(start + duration + 0.03);
-        };
-
-        const battleNoise = (context, start, duration, volume) => {
-            const buffer = context.createBuffer(1, context.sampleRate * duration, context.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let index = 0; index < data.length; index++) data[index] = Math.random() * 2 - 1;
-            const source = context.createBufferSource();
-            const gain = context.createGain();
-            source.buffer = buffer;
-            gain.gain.setValueAtTime(volume, start);
-            gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-            source.connect(gain).connect(battleMasterGain);
-            source.start(start);
-        };
-
-        window.battleSound = (kind) => {
-            const context = battleAudio();
-            if (!context) return;
-            const start = context.currentTime;
-            const notes = kind === 'win' ? [523, 659, 784, 1047] : kind === 'sunk' ? [220, 165, 110] : kind === 'hit' ? [440, 554, 659] : kind === 'click' ? [700, 900] : [220];
-            notes.forEach((frequency, index) => battleTone(context, frequency, start + index * 0.07, kind === 'win' ? 0.5 : 0.36, kind === 'sunk' ? 0.48 : 0.38));
-            if (kind !== 'click')
-                battleNoise(context, start, kind === 'sunk' ? 0.42 : 0.12, kind === 'sunk' ? 0.34 : 0.22);
-        };
-
-        window.battleMusic = (enabled) => {
-            if (!enabled) {
-                clearInterval(battleMusicTimer);
-                battleMusicTimer = null;
-                return;
-            }
-
-            if (battleMusicTimer) return;
-            const melody = [392, 440, 523, 659, 523, 440, 392, 330, 392, 440, 587, 659, 587, 440, 392, 330];
-            const chords = [[196, 247, 294], [220, 277, 330], [165, 208, 247], [175, 220, 262]];
-            battleMusicTimer = setInterval(() => {
-                const context = battleAudio();
-                if (!context) return;
-                const start = context.currentTime;
-                const step = battleMusicStep++;
-                battleTone(context, melody[step % melody.length], start, 0.42, 0.13, 'triangle');
-                chords[step % chords.length].forEach(frequency => battleTone(context, frequency, start, 0.5, 0.055, 'sine'));
-                if (step % 4 === 0) battleNoise(context, start, 0.08, 0.08);
-            }, 420);
-        };
-
-        document.addEventListener('click', event => {
-            const interactive = event.target.closest('button, a, select');
-            if (!interactive) return;
-            window.battleSound('click');
-            if (window.location.pathname === '/') window.battleMusic(true);
-            if (interactive.matches('a[href*="/partie/"]')) window.battleMusic(false);
-        });
-    </script>
+    <script src="js/audio.js"></script>
 </head>
 
 <body>

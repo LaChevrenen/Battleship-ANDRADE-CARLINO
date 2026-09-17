@@ -1,4 +1,7 @@
-﻿<div class="nav-shell">
+@using BattleShip.App.Services
+@inject GameAudio Audio
+
+<div class="nav-shell">
     <div class="brand-block">
         <div class="brand-mark">⚓</div>
         <div>
@@ -8,11 +11,22 @@
     </div>
 
     <nav class="nav-stack">
-        <NavLink class="nav-link active" href="" Match="NavLinkMatch.All">
+        <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
             <span aria-hidden="true">⌂</span>
             <span>Accueil</span>
         </NavLink>
     </nav>
+
+    @* Dans la barre latérale : elle entoure toutes les pages, donc l'audio se règle partout. *@
+    <div class="nav-audio" aria-label="Réglages audio">
+        <span class="nav-audio-title">Audio</span>
+        <label class="sound-toggle">
+            <input type="checkbox" checked="@Audio.SoundEnabled" @onchange="ToggleSound" /> Sons
+        </label>
+        <label class="sound-toggle">
+            <input type="checkbox" checked="@Audio.MusicEnabled" @onchange="ToggleMusic" /> Musique
+        </label>
+    </div>
 
     <div class="nav-footer">
         <p>partie en ligne</p>
@@ -21,5 +35,7 @@
 </div>
 
 @code {
-    // Le menu reste esthétique sans comportement de toggle : l’interface de jeu doit rester claire et premium.
+    private void ToggleSound(ChangeEventArgs change) => Audio.SetSound(change.Value is true);
+
+    private Task ToggleMusic(ChangeEventArgs change) => Audio.SetMusicAsync(change.Value is true);
 }
