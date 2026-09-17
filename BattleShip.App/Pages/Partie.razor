@@ -427,7 +427,8 @@ else
             selectedLength = null;
             selectedPortIndex = null;
             selectedPlacedShip = ship;
-            preview = [];
+            preview = [.. ship];
+            previewValid = true;
             return;
         }
 
