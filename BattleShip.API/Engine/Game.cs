@@ -29,6 +29,16 @@ public sealed class Game(
 
     public IReadOnlyList<int> RemainingShipLengths => fleetUnderConstruction?.RemainingLengths ?? [];
 
+    // Jauge par camp : avance d'un cran à chaque tir normal accepté, plafonnée à l'intervalle
+    // (un seul niveau, pas d'empilement). Utiliser l'attaque spéciale la remet à zéro.
+    private int playerSpecialAttackProgress;
+    private int computerSpecialAttackProgress;
+
+    public int SpecialAttackProgress(Side side) =>
+        side == Side.Player ? playerSpecialAttackProgress : computerSpecialAttackProgress;
+
+    public bool HasSpecialAttackCharge(Side side) => SpecialAttackProgress(side) >= GameRules.SpecialAttackChargeInterval;
+
     // Seul l'ordinateur est placé à la création : le joueur pose sa flotte lui-même, ou la tire au hasard.
     public static Game CreateWithRandomComputerFleet(Random random, AiDifficulty difficulty = AiDifficulty.Normal) =>
         new(new FleetUnderConstruction(GameRules.GridSize, GameRules.GridSize, GameRules.DefaultShipLengths),
@@ -168,6 +178,12 @@ public sealed class Game(
         return new PlayerTurnResult(playerShot, PlayComputerTurn(chooseComputerTarget));
     }
 
+    public PlayerAreaTurnResult PlayerFireSpecialAttack(Coordinate center, Func<RevealedBoard, Coordinate> chooseComputerTarget)
+    {
+        var playerShot = FireArea(Side.Player, center);
+        return new PlayerAreaTurnResult(playerShot, PlayComputerTurn(chooseComputerTarget));
+    }
+
     // Gardé par l'état de la partie, pas par le résultat du tir du joueur : seul un tir accepté à l'eau donne la main à l'ordinateur.
     private List<ComputerShot> PlayComputerTurn(Func<RevealedBoard, Coordinate> chooseTarget)
     {
@@ -178,9 +194,21 @@ public sealed class Game(
         {
             // L'ordinateur ne voit de la grille du joueur que ce qu'un joueur humain en saurait.
             var target = chooseTarget(PlayerBoard.Reveal());
-            var result = Fire(Side.Computer, target);
-            if (result.IsAccepted)
-                shots.Add(new ComputerShot(target, result));
+
+            // Même règle que pour le joueur : dès qu'il est chargé, l'ordinateur utilise son
+            // attaque spéciale — aucune stratégie de décision, la charge disponible suffit.
+            if (HasSpecialAttackCharge(Side.Computer))
+            {
+                var area = FireArea(Side.Computer, target);
+                if (area.IsAccepted)
+                    shots.AddRange(area.Cells.Select(cell => new ComputerShot(cell.Target, cell.Result)));
+            }
+            else
+            {
+                var result = Fire(Side.Computer, target);
+                if (result.IsAccepted)
+                    shots.Add(new ComputerShot(target, result));
+            }
         }
 
         return shots;
@@ -188,34 +216,106 @@ public sealed class Game(
 
     private ShotResult Fire(Side shooter, Coordinate target)
     {
-        if (Phase == GamePhase.Setup)
-            return ShotResult.Rejected(ShotRejection.NotStarted);
-
-        if (Phase == GamePhase.Finished)
-            return ShotResult.Rejected(ShotRejection.GameOver);
-
-        if (CurrentTurn != shooter)
-            return ShotResult.Rejected(ShotRejection.NotYourTurn);
+        var guard = ValidateShooter(shooter);
+        if (guard is not null)
+            return ShotResult.Rejected(guard.Value);
 
         var targetBoard = shooter == Side.Player ? ComputerBoard : PlayerBoard;
         var result = targetBoard.ReceiveShot(target);
 
-        // Un tir refusé n'a pas d'Outcome : aucune branche ne le concerne, donc ni tour ni phase ne bougent.
-        switch (result.Outcome)
+        if (result.IsAccepted)
         {
-            case ShotOutcome.Miss:
-                CurrentTurn = shooter == Side.Player ? Side.Computer : Side.Player;
-                break;
-
-            case ShotOutcome.Sunk when targetBoard.AllShipsSunk:
-                // La victoire l'emporte sur le rejeu : la partie s'arrête et plus personne n'a la main.
-                Phase = GamePhase.Finished;
-                Winner = shooter;
-                CurrentTurn = null;
-                break;
+            IncrementSpecialAttackCharge(shooter);
+            ResolveTurnAfterShots(shooter, targetBoard, [result]);
         }
 
         return result;
+    }
+
+    // Attaque spéciale : la case visée et ses quatre voisines directes (PlacementRules.SideNeighbours,
+    // déjà utilisée pour la règle de contact — même géométrie, autre usage), résolues comme cinq
+    // tirs indépendants réunis en une seule action. La case visée se comporte exactement comme un
+    // tir normal pour les refus ; ses voisines, elles, sont simplement ignorées si elles sont hors
+    // grille ou déjà tirées — sinon la moindre case déjà connue rendrait l'attaque inutilisable.
+    private AreaShotResult FireArea(Side shooter, Coordinate center)
+    {
+        var guard = ValidateShooter(shooter);
+        if (guard is not null)
+            return new AreaShotResult(ShotResult.Rejected(guard.Value), []);
+
+        if (!HasSpecialAttackCharge(shooter))
+            return new AreaShotResult(ShotResult.Rejected(ShotRejection.SpecialAttackNotCharged), []);
+
+        var targetBoard = shooter == Side.Player ? ComputerBoard : PlayerBoard;
+
+        var centerResult = targetBoard.ReceiveShot(center);
+        if (!centerResult.IsAccepted)
+            return new AreaShotResult(centerResult, []);
+
+        var cells = new List<AreaShot> { new(center, centerResult) };
+        foreach (var neighbour in PlacementRules.SideNeighbours(center))
+        {
+            var result = targetBoard.ReceiveShot(neighbour);
+            if (result.IsAccepted)
+                cells.Add(new AreaShot(neighbour, result));
+        }
+
+        // Consommée, pas comptée comme un tir normal de plus : elle ne fait pas avancer la jauge
+        // vers la prochaine charge, elle la remet à zéro.
+        ResetSpecialAttackCharge(shooter);
+        ResolveTurnAfterShots(shooter, targetBoard, cells.Select(cell => cell.Result));
+
+        return new AreaShotResult(centerResult, cells);
+    }
+
+    private ShotRejection? ValidateShooter(Side shooter)
+    {
+        if (Phase == GamePhase.Setup)
+            return ShotRejection.NotStarted;
+
+        if (Phase == GamePhase.Finished)
+            return ShotRejection.GameOver;
+
+        if (CurrentTurn != shooter)
+            return ShotRejection.NotYourTurn;
+
+        return null;
+    }
+
+    // Commun à un tir normal (un seul résultat) et à une attaque spéciale (jusqu'à cinq) : le
+    // rejeu et la victoire se décident sur l'ensemble des cases résolues, pas case par case —
+    // sans ça, la première case d'une attaque spéciale déciderait du tour à la place des autres.
+    private void ResolveTurnAfterShots(Side shooter, Board targetBoard, IEnumerable<ShotResult> results)
+    {
+        var accepted = results.ToList();
+
+        if (accepted.Any(result => result.Outcome == ShotOutcome.Sunk) && targetBoard.AllShipsSunk)
+        {
+            // La victoire l'emporte sur le rejeu : la partie s'arrête et plus personne n'a la main.
+            Phase = GamePhase.Finished;
+            Winner = shooter;
+            CurrentTurn = null;
+            return;
+        }
+
+        if (!accepted.Any(result => result.Outcome is ShotOutcome.Hit or ShotOutcome.Sunk))
+            CurrentTurn = shooter == Side.Player ? Side.Computer : Side.Player;
+    }
+
+    private void IncrementSpecialAttackCharge(Side shooter)
+    {
+        if (shooter == Side.Player)
+            playerSpecialAttackProgress = Math.Min(playerSpecialAttackProgress + 1, GameRules.SpecialAttackChargeInterval);
+        else
+            computerSpecialAttackProgress = Math.Min(computerSpecialAttackProgress + 1, GameRules.SpecialAttackChargeInterval);
+    }
+
+    private void ResetSpecialAttackCharge(Side shooter)
+    {
+        if (shooter == Side.Player)
+            playerSpecialAttackProgress = 0;
+        else
+            computerSpecialAttackProgress = 0;
     }
 
     // La flotte par défaut tient toujours sur la grille par défaut : un échec ici est un bug, pas une situation de jeu.

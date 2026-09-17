@@ -13,4 +13,9 @@ public static class GameRules
     public const int MaxShipsPerLength = 3;
 
     public static IReadOnlyList<int> DefaultShipLengths { get; } = [5, 4, 3, 3, 2];
+
+    // Nombre de tirs acceptés qu'un camp doit jouer avant qu'une attaque spéciale soit disponible.
+    // Valeur arbitraire, choisie pour rester utilisable sur une petite grille personnalisée sans
+    // dominer une grille classique. Un seul niveau : aucun empilement au-delà.
+    public const int SpecialAttackChargeInterval = 5;
 }
