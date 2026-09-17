@@ -95,7 +95,9 @@ public sealed class FleetPlacementTests
         fleet.TryPlace(new(0, 0), 3, Orientation.Horizontal);
         fleet.TryPlace(new(7, 0), 2, Orientation.Horizontal);
 
-        Assert.Equal(PlacementRejection.AdjacentShip, fleet.TryMoveAt(new(1, 0), new(6, 0), Orientation.Horizontal));
+        // Cible (4,0) : les cases (4,0) à (6,0) ne recouvrent pas le second navire, mais (6,0)
+        // le touche par un côté. Viser (6,0) donnerait un chevauchement, contrôlé avant l'adjacence.
+        Assert.Equal(PlacementRejection.AdjacentShip, fleet.TryMoveAt(new(1, 0), new(4, 0), Orientation.Horizontal));
 
         var first = fleet.Ships.Single(ship => ship.Cells.Contains(new Coordinate(0, 0)));
         var second = fleet.Ships.Single(ship => ship.Cells.Contains(new Coordinate(7, 0)));

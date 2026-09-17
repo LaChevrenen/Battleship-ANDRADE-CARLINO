@@ -153,16 +153,16 @@ public sealed class PlacementEndpointsTests : IClassFixture<WebApplicationFactor
     }
 
     [Fact]
-    public async Task Faire_pivoter_un_navire_le_redresse_autour_de_son_origine()
+    public async Task Faire_pivoter_un_navire_le_redresse_autour_de_la_case_visee()
     {
         var created = await CreateGame();
-        var afterFirst = await State(await PlaceShip(created.Id, 0, 0, 5, Orientation.Horizontal, created.Version));
+        var afterFirst = await State(await PlaceShip(created.Id, 0, 4, 5, Orientation.Horizontal, created.Version));
 
-        // Une case du milieu : le joueur survole n'importe où sur le navire.
-        var rotated = await State(await RotateShip(created.Id, 2, 0, afterFirst.Version));
+        // La case visée est le pivot : elle reste occupée, et le navire tourne autour d'elle.
+        var rotated = await State(await RotateShip(created.Id, 2, 4, afterFirst.Version));
 
         Assert.Equal<Coordinate>(
-            [new(0, 0), new(0, 1), new(0, 2), new(0, 3), new(0, 4)],
+            [new(2, 2), new(2, 3), new(2, 4), new(2, 5), new(2, 6)],
             Assert.Single(rotated.Player.Ships).OrderBy(cell => cell.Row).ThenBy(cell => cell.Column));
         Assert.Equal(afterFirst.Version + 1, rotated.Version);
         Assert.Equal<int>([2, 3, 3, 4], rotated.Player.RemainingShipLengths.Order());
