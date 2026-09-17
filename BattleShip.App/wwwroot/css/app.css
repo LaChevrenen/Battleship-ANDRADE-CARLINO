@@ -614,6 +614,7 @@ button {
 }
 
 .board-panel {
+    position: relative;
     max-width: 100%;
     border-radius: 1.2rem;
     padding: 1rem 1rem 0.8rem;
@@ -810,24 +811,65 @@ button {
     border-radius: 12px;
 }
 
-.special-attack-bar {
+/* Badge flottant en bas à gauche du panneau plutôt qu'une ligne de texte dans une barre : l'état
+   se lit d'un coup d'œil, sans faire bouger le reste de la mise en page quand il apparaît. Posé
+   sur .board-panel (position: relative), pas sur .grille, pour rester à la même place quelle que
+   soit la taille de la grille — y compris une grille personnalisée qui défile horizontalement. */
+.special-attack-gauge {
+    position: absolute;
+    left: 0.7rem;
+    bottom: 0.7rem;
+    z-index: 5;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    margin-bottom: 0.7rem;
+    gap: 0.45rem;
+    padding: 0.4rem 0.65rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.16);
+    pointer-events: none;
 }
 
-.special-attack-gauge {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #9a3412;
+/* Grisé tant qu'elle charge, coloré une fois prête : la couleur porte l'information, pas un texte. */
+.special-attack-symbol {
+    font-size: 1.15rem;
+    line-height: 1;
+    color: #94a3b8;
+    filter: grayscale(1);
+    transition: color 0.25s ease, filter 0.25s ease, transform 0.25s ease;
 }
 
-.special-attack-toggle.active {
-    background: linear-gradient(135deg, #ea580c 0%, #7c2d12 100%);
-    color: white;
-    border-color: transparent;
+.special-attack-gauge.charged .special-attack-symbol {
+    color: #ea580c;
+    filter: none;
+    transform: scale(1.15);
+}
+
+.special-attack-pips {
+    display: flex;
+    gap: 0.22rem;
+}
+
+.special-attack-pip {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: rgba(148, 163, 184, 0.45);
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.special-attack-pip.filled {
+    background: #f97316;
+    transform: scale(1.1);
+}
+
+.special-attack-gauge.charged .special-attack-pip.filled {
+    background: #ea580c;
+}
+
+/* Jauge de l'ordinateur, sur ma grille : même lecture, plus discrète (elle ne se clique pas). */
+.special-attack-gauge.computer {
+    background: rgba(238, 242, 246, 0.92);
 }
 
 /* Hauteur et colonnes fixes : le contenu change entre « flotte a poser » et « flotte complete »,

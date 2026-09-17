@@ -6,7 +6,8 @@ public sealed class Game(
     FleetUnderConstruction playerFleet,
     Board computerBoard,
     Random random,
-    AiDifficulty difficulty = AiDifficulty.Normal)
+    AiDifficulty difficulty = AiDifficulty.Normal,
+    bool specialAttacksEnabled = true)
 {
     // Lâchée au démarrage : sans elle, plus rien ne peut modifier la flotte du joueur.
     private FleetUnderConstruction? fleetUnderConstruction = playerFleet;
@@ -19,6 +20,10 @@ public sealed class Game(
     // démarrage : sans quoi cette information disparaîtrait dès la fin de la préparation, alors
     // que le panneau de règles peut être rouvert à tout moment de la partie.
     public bool AllowAdjacentShips { get; } = playerFleet.AllowAdjacentShips;
+
+    // Même raison que AllowAdjacentShips ci-dessus : capturé une fois, lisible à tout moment de la
+    // partie. Classique : toujours activées (valeur par défaut). Personnalisée : au choix.
+    public bool SpecialAttacksEnabled { get; } = specialAttacksEnabled;
 
     public GamePhase Phase { get; private set; } = GamePhase.Setup;
 
@@ -51,7 +56,7 @@ public sealed class Game(
     // docs/REGLES.md pour une configuration que le serveur ne parvient pas à placer.
     public static Game? TryCreate(
         int width, int height, IReadOnlyList<int> shipLengths, bool allowAdjacentShips,
-        Random random, AiDifficulty difficulty = AiDifficulty.Normal)
+        Random random, AiDifficulty difficulty = AiDifficulty.Normal, bool specialAttacksEnabled = true)
     {
         var placement = RandomFleetPlacer.Place(width, height, shipLengths, random, allowAdjacentShips);
         if (placement.Ships is null)
@@ -61,7 +66,8 @@ public sealed class Game(
             new FleetUnderConstruction(width, height, shipLengths, allowAdjacentShips),
             new Board(width, height, placement.Ships),
             random,
-            difficulty);
+            difficulty,
+            specialAttacksEnabled);
     }
 
     // Le niveau se choisit pendant la préparation seulement : une fois la partie commencée, le
@@ -225,7 +231,11 @@ public sealed class Game(
 
         if (result.IsAccepted)
         {
-            IncrementSpecialAttackCharge(shooter);
+            // Jauge jamais avancée quand la règle est désactivée : HasSpecialAttackCharge reste
+            // faux pour toujours, ce qui suffit à empêcher l'IA de s'en servir et à faire refuser
+            // toute demande du joueur (SpecialAttackNotCharged), sans garde supplémentaire ailleurs.
+            if (SpecialAttacksEnabled)
+                IncrementSpecialAttackCharge(shooter);
             ResolveTurnAfterShots(shooter, targetBoard, [result]);
         }
 

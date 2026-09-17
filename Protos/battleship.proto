@@ -35,6 +35,9 @@ message GameState {
   int32 special_attack_charge_interval = 11;
   int32 player_special_attack_progress = 12;
   int32 computer_special_attack_progress = 13;
+  // Fixe pour toute la partie personnalisee ; a faux, les deux progressions ci-dessus restent a
+  // zero pour toujours cote serveur.
+  bool special_attacks_enabled = 14;
 }
 
 message Coordinate {

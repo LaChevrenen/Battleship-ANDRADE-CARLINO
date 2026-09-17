@@ -16,6 +16,9 @@ et un placement aléatoire.
 - **[E0]** Le serveur **refuse une configuration qu'il ne parvient pas à placer** dans la limite
   d'essais du placement aléatoire (voir ci-dessous), même si un placement existe peut-être en
   théorie.
+- **[E0] Attaques spéciales** : activées par défaut, désactivables pour une partie personnalisée.
+  Une partie classique les a **toujours** activées. Désactivées, la jauge des deux camps reste à
+  zéro pour toute la partie et une attaque spéciale est refusée quelle que soit la situation.
 
 ## Coordonnées
 
@@ -58,8 +61,10 @@ et un placement aléatoire.
   **5 tirs acceptés** de ce camp et **plafonne à une charge** : une fois pleine, elle
   n'avance plus tant que la charge n'a pas été utilisée.
 - **Déclenchement** : une fois chargée, le tireur peut demander une attaque spéciale au lieu d'un
-  tir simple, sur la même route que le tir. Sans charge, la demande est **refusée**
-  (`SpecialAttackNotCharged`) et ne change rien.
+  tir simple, sur la même route que le tir — le serveur ne l'impose pas, c'est un champ optionnel
+  de la requête. Sans charge, la demande est **refusée** (`SpecialAttackNotCharged`) et ne change
+  rien. Le client de référence l'envoie **automatiquement** dès que la jauge du joueur est pleine :
+  aucun geste supplémentaire, le tir suivant devient l'attaque spéciale de lui-même.
 - **Effet** : elle résout **jusqu'à 5 cases en un seul coup** — la case visée et ses 4 voisines
   par les côtés (une croix). Les voisines hors grille ou déjà tirées sont **simplement ignorées**,
   sans provoquer de refus : seule la case visée est soumise aux motifs de refus habituels d'un

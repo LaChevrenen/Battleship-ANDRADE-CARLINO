@@ -26,8 +26,9 @@ public sealed class GameCreationEndpointTests : IClassFixture<WebApplicationFact
             .WithWebHostBuilder(builder => builder.ConfigureTestServices(services => services.AddSingleton(new Random(Seed))))
             .CreateClient();
 
-    private Task<HttpResponseMessage> CreateCustom(int width, int height, IReadOnlyDictionary<int, int> shipCounts, bool allowAdjacentShips) =>
-        client.PostAsJsonAsync("/games", new { width, height, shipCounts, allowAdjacentShips }, Json);
+    private Task<HttpResponseMessage> CreateCustom(
+        int width, int height, IReadOnlyDictionary<int, int> shipCounts, bool allowAdjacentShips, bool specialAttacksEnabled = true) =>
+        client.PostAsJsonAsync("/games", new { width, height, shipCounts, allowAdjacentShips, specialAttacksEnabled }, Json);
 
     private Task<HttpResponseMessage> PlaceShip(Guid id, int column, int row, int length, Orientation orientation, int version) =>
         client.PostAsJsonAsync($"/games/{id}/ships", new { column, row, length, orientation = orientation.ToString(), expectedVersion = version }, Json);

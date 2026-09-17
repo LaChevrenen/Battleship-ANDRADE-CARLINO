@@ -38,7 +38,8 @@ public static class GameStateConverter
         state.AllowAdjacentShips,
         state.SpecialAttackChargeInterval,
         state.PlayerSpecialAttackProgress,
-        state.ComputerSpecialAttackProgress);
+        state.ComputerSpecialAttackProgress,
+        state.SpecialAttacksEnabled);
 
     private static IReadOnlyList<Coordinate> ToCells(Proto.CellList ship) => [.. ship.Cells.Select(ToDto)];
 

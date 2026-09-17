@@ -44,6 +44,11 @@
         Autoriser les navires à se toucher par un côté
     </label>
 
+    <label class="custom-adjacency">
+        <input type="checkbox" data-sound="checkbox" checked="@specialAttacksEnabled" @onchange="@(e => specialAttacksEnabled = e.Value is true)" disabled="@Busy" />
+        Activer les attaques spéciales
+    </label>
+
     <div class="custom-game-actions">
         <button type="button" class="ghost" data-sound="destructive" @onclick="Cancel" disabled="@Busy">Annuler</button>
         <button type="button" class="primary" data-sound="primary" @onclick="Submit" disabled="@(Busy || TotalShips == 0)">
@@ -66,6 +71,7 @@
     private int width = 10;
     private int height = 10;
     private bool allowAdjacentShips;
+    private bool specialAttacksEnabled = true;
 
     // Composition de départ : la flotte classique, modifiable. Un formulaire vide obligerait à
     // tout construire soi-même avant de pouvoir créer quoi que ce soit.
@@ -96,7 +102,7 @@
     private Task Submit()
     {
         var request = new GameCreationRequest(
-            width, height, counts.Where(pair => pair.Value > 0).ToDictionary(), allowAdjacentShips);
+            width, height, counts.Where(pair => pair.Value > 0).ToDictionary(), allowAdjacentShips, specialAttacksEnabled);
         return OnCreate.InvokeAsync(request);
     }
 }

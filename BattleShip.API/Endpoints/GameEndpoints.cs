@@ -48,7 +48,9 @@ public static class GameEndpoints
             return TypedResults.ValidationProblem(validation.ToDictionary());
 
         var lengths = ExpandShipCounts(request.ShipCounts!);
-        var game = Game.TryCreate(request.Width!.Value, request.Height!.Value, lengths, request.AllowAdjacentShips!.Value, random);
+        var game = Game.TryCreate(
+            request.Width!.Value, request.Height!.Value, lengths, request.AllowAdjacentShips!.Value, random,
+            specialAttacksEnabled: request.SpecialAttacksEnabled!.Value);
         if (game is null)
             return TypedResults.Conflict(Rejection(
                 "FleetDoesNotFit", "Cette flotte ne tient pas sur cette grille avec ce réglage de contact."));

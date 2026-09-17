@@ -24,7 +24,8 @@ public static class GameDtoMapper
             game.AllowAdjacentShips,
             GameRules.SpecialAttackChargeInterval,
             game.SpecialAttackProgress(Side.Player),
-            game.SpecialAttackProgress(Side.Computer));
+            game.SpecialAttackProgress(Side.Computer),
+            game.SpecialAttacksEnabled);
     }
 
     public static TurnDto ToTurnDto(PlayerTurnResult turn, StoredGame stored) =>

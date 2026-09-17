@@ -148,19 +148,22 @@ else
                     </p>
                 </section>
 
-                <section>
-                    <h3>Attaque spéciale</h3>
-                    <p>
-                        Chaque camp charge sa jauge d'une unité à chacun de ses tirs acceptés
-                        (@state.SpecialAttackChargeInterval tirs pour une charge pleine, plafonnée à une seule).
-                        Une fois chargée, l'attaque spéciale touche une croix de cinq cases — la case visée et
-                        ses quatre voisines par les côtés — en un seul coup, et consomme aussitôt la charge.
-                        Aux bords de la grille ou sur une case déjà tirée, la voisine correspondante est
-                        simplement ignorée. Tu gardes la main si au moins une des cases touchées est un
-                        touché ou un coulé. L'ordinateur suit exactement la même règle et l'utilise
-                        automatiquement dès qu'il est chargé.
-                    </p>
-                </section>
+                @if (state.SpecialAttacksEnabled)
+                {
+                    <section>
+                        <h3>Attaque spéciale</h3>
+                        <p>
+                            Chaque camp charge sa jauge d'une unité à chacun de ses tirs acceptés
+                            (@state.SpecialAttackChargeInterval tirs pour une charge pleine, plafonnée à une seule).
+                            Une fois chargée, ton tir suivant devient automatiquement une attaque spéciale — rien à
+                            activer : elle touche une croix de cinq cases, la case visée et ses quatre voisines par
+                            les côtés, en un seul coup, et consomme aussitôt la charge. Aux bords de la grille ou sur
+                            une case déjà tirée, la voisine correspondante est simplement ignorée. Tu gardes la main
+                            si au moins une des cases touchées est un touché ou un coulé. L'ordinateur suit
+                            exactement la même règle et l'utilise automatiquement dès qu'il est chargé.
+                        </p>
+                    </section>
+                }
 
                 <section>
                     <h3>Gagner</h3>
@@ -265,17 +268,6 @@ else
                     <span>Coups</span>
                     <strong>@state.Statistics.TotalShots</strong>
                 </div>
-                @if (state.Phase == GamePhase.InProgress)
-                {
-                    <div class="hud-item">
-                        <span>Attaque spéciale</span>
-                        <strong>@state.PlayerSpecialAttackProgress/@state.SpecialAttackChargeInterval@(PlayerSpecialAttackCharged ? " — chargée" : "")</strong>
-                    </div>
-                    <div class="hud-item">
-                        <span>Attaque spéciale (IA)</span>
-                        <strong>@state.ComputerSpecialAttackProgress/@state.SpecialAttackChargeInterval</strong>
-                    </div>
-                }
             </div>
             @if (state.Statistics.History.Count > 0)
             {
@@ -296,18 +288,20 @@ else
             @if (state.Phase != GamePhase.Setup)
             {
                 <div class="board-panel board-panel-opponent">
-                    @if (state.Phase == GamePhase.InProgress)
+                    @if (state.Phase == GamePhase.InProgress && state.SpecialAttacksEnabled)
                     {
-                        <div class="special-attack-bar">
-                            <span class="special-attack-gauge">
-                                Attaque spéciale : @state.PlayerSpecialAttackProgress/@state.SpecialAttackChargeInterval
+                        <div class="special-attack-gauge @(PlayerSpecialAttackCharged ? "charged" : null)"
+                             title="@(PlayerSpecialAttackCharged
+                                 ? "Attaque spéciale prête : le prochain tir touchera une croix de 5 cases."
+                                 : $"Attaque spéciale : {state.PlayerSpecialAttackProgress}/{state.SpecialAttackChargeInterval}")">
+                            <span class="special-attack-symbol" aria-hidden="true">✦</span>
+                            <span class="special-attack-pips">
+                                @for (var i = 0; i < state.SpecialAttackChargeInterval; i++)
+                                {
+                                    var filled = i < state.PlayerSpecialAttackProgress;
+                                    <span class="special-attack-pip @(filled ? "filled" : null)"></span>
+                                }
                             </span>
-                            <button class="ghost special-attack-toggle @(specialAttackMode ? "active" : null)"
-                                    data-sound="@(specialAttackMode ? "toggle-off" : "toggle-on")"
-                                    disabled="@(!PlayerSpecialAttackCharged || busy || state.CurrentTurn != Side.Player)"
-                                    @onclick="ToggleSpecialAttack">
-                                @(specialAttackMode ? "Annuler l'attaque spéciale" : "Attaque spéciale (croix de 5 cases)")
-                            </button>
                         </div>
                     }
                     <Grid Title="Grille adverse"
@@ -328,6 +322,20 @@ else
             }
 
             <div class="board-panel board-panel-player">
+                @if (state.Phase == GamePhase.InProgress && state.SpecialAttacksEnabled)
+                {
+                    <div class="special-attack-gauge computer @(state.ComputerSpecialAttackProgress >= state.SpecialAttackChargeInterval ? "charged" : null)"
+                         title="@($"Attaque spéciale de l'ordinateur : {state.ComputerSpecialAttackProgress}/{state.SpecialAttackChargeInterval}")">
+                        <span class="special-attack-symbol" aria-hidden="true">✦</span>
+                        <span class="special-attack-pips">
+                            @for (var i = 0; i < state.SpecialAttackChargeInterval; i++)
+                            {
+                                var filled = i < state.ComputerSpecialAttackProgress;
+                                <span class="special-attack-pip @(filled ? "filled" : null)"></span>
+                            }
+                        </span>
+                    </div>
+                }
                 <Grid Title="Ma grille"
                       Width="state.Player.Width"
                       Height="state.Player.Height"
@@ -376,9 +384,8 @@ else
     // durable sur ma grille, pas d'un simple flash.
     private Coordinate? lastComputerShot;
 
-    // Armée par le bouton, désarmée après chaque tir (réussi ou non) : le serveur remet la jauge à
-    // zéro dans les deux cas, donc rien ne sert de garder le mode actif au-delà d'un coup.
-    private bool specialAttackMode;
+    // Case de la grille adverse survolée, pour l'aperçu en croix : automatique dès que la jauge
+    // est pleine, il n'y a rien d'autre à armer.
     private Coordinate? specialAttackHover;
 
     // Bannière « Combat engagé ! » affichée pendant le jingle de début de partie.
@@ -438,14 +445,16 @@ else
     private bool PlayerSpecialAttackCharged =>
         state is not null && state.PlayerSpecialAttackProgress >= state.SpecialAttackChargeInterval;
 
+    // Le contour pointillé signale que la jauge est prête : automatique, dès qu'elle l'est, le
+    // prochain clic devient l'attaque spéciale de lui-même — il n'y a plus de mode à armer.
     private string OpponentGridClass =>
         (busy || state?.CurrentTurn != Side.Player ? "primary-grid grid-locked" : "primary-grid")
-        + (specialAttackMode ? " mode-speciale" : string.Empty);
+        + (PlayerSpecialAttackCharged ? " mode-speciale" : string.Empty);
 
     // Reflète honnêtement ce que le serveur résoudra : les voisines hors grille ou déjà tirées
     // sont exclues ici aussi, pour ne pas promettre une case que l'attaque va en fait ignorer.
     private IReadOnlyCollection<Coordinate> OpponentPreview =>
-        specialAttackMode && specialAttackHover is { } hover ? SpecialAttackCross(hover) : [];
+        PlayerSpecialAttackCharged && specialAttackHover is { } hover ? SpecialAttackCross(hover) : [];
 
     private IReadOnlyList<Coordinate> SpecialAttackCross(Coordinate center)
     {
@@ -473,15 +482,6 @@ else
             && !alreadyTargeted.Contains(cell))];
     }
 
-    private void ToggleSpecialAttack()
-    {
-        if (!PlayerSpecialAttackCharged || busy || state?.CurrentTurn != Side.Player)
-            return;
-
-        specialAttackMode = !specialAttackMode;
-        specialAttackHover = null;
-    }
-
     private void ShowSpecialAttackPreview(Coordinate cell) => specialAttackHover = cell;
 
     private void ClearSpecialAttackPreview() => specialAttackHover = null;
@@ -496,8 +496,7 @@ else
         message = null;
         refusal = null;
         // Blazor réutilise cette instance de page en changeant seulement Id (ex. « Nouvelle
-        // partie ») : sans ça, un mode armé sur l'ancienne partie resterait armé sur la nouvelle.
-        specialAttackMode = false;
+        // partie ») : sans ça, un survol resterait mémorisé d'une partie à l'autre.
         specialAttackHover = null;
         return LoadState();
     }
@@ -815,11 +814,9 @@ else
         busy = true;
         refusal = null;
 
-        // Désarmée avant même la réponse du serveur : qu'elle réussisse ou soit refusée, la jauge
-        // ne reste jamais pleine côté joueur après ce coup (elle se remet à zéro dans les deux cas
-        // d'issue acceptée, et un refus ne consomme rien à retenter dans ce mode).
-        var special = specialAttackMode;
-        specialAttackMode = false;
+        // Automatique : dès que la jauge est pleine, ce tir devient l'attaque spéciale sans action
+        // supplémentaire du joueur — la case visée reste le seul choix qui lui revient.
+        var special = PlayerSpecialAttackCharged;
         specialAttackHover = null;
 
         var result = await Answered(() => Api.FireAsync(Guid.Parse(Id), target.Column, target.Row, state.Version, special));

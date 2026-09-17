@@ -19,6 +19,7 @@ public static class GameStateMessageMapper
             SpecialAttackChargeInterval = state.SpecialAttackChargeInterval,
             PlayerSpecialAttackProgress = state.PlayerSpecialAttackProgress,
             ComputerSpecialAttackProgress = state.ComputerSpecialAttackProgress,
+            SpecialAttacksEnabled = state.SpecialAttacksEnabled,
             Player = new Proto.OwnBoard
             {
                 Width = state.Player.Width,

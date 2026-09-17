@@ -9,4 +9,5 @@ public sealed record GameCreationRequest(
     // Longueur (1 à 5) -> nombre de navires de cette longueur (0 à 3). Une longueur absente du
     // dictionnaire vaut 0.
     IReadOnlyDictionary<int, int>? ShipCounts,
-    bool? AllowAdjacentShips);
+    bool? AllowAdjacentShips,
+    bool? SpecialAttacksEnabled);

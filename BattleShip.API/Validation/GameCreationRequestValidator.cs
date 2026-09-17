@@ -26,6 +26,9 @@ public sealed class GameCreationRequestValidator : AbstractValidator<GameCreatio
         RuleFor(request => request.AllowAdjacentShips)
             .NotNull().WithMessage("Le réglage de contact entre navires est obligatoire.");
 
+        RuleFor(request => request.SpecialAttacksEnabled)
+            .NotNull().WithMessage("Le réglage des attaques spéciales est obligatoire.");
+
         RuleFor(request => request.ShipCounts)
             .NotNull().WithMessage("La composition de la flotte est obligatoire.");
 

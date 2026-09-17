@@ -49,6 +49,26 @@ public sealed class GameCustomCreationTests
         Assert.Equal(allowAdjacentShips, game.AllowAdjacentShips);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Le_reglage_des_attaques_speciales_choisi_a_la_creation_reste_lisible_toute_la_partie(bool specialAttacksEnabled)
+    {
+        var game = Game.TryCreate(width: 6, height: 6, shipLengths: [2], allowAdjacentShips: false, new Random(0),
+            specialAttacksEnabled: specialAttacksEnabled);
+
+        Assert.NotNull(game);
+        Assert.Equal(specialAttacksEnabled, game.SpecialAttacksEnabled);
+    }
+
+    [Fact]
+    public void Une_partie_classique_a_toujours_les_attaques_speciales_activees()
+    {
+        var game = Game.CreateWithRandomComputerFleet(new Random(0));
+
+        Assert.True(game.SpecialAttacksEnabled);
+    }
+
     [Fact]
     public void La_flotte_du_joueur_reprend_la_meme_configuration_que_celle_de_l_ordinateur()
     {

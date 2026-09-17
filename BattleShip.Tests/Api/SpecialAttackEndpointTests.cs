@@ -35,6 +35,23 @@ public sealed class SpecialAttackEndpointTests : IClassFixture<WebApplicationFac
         return (await response.Content.ReadFromJsonAsync<TurnDto>(Json))!.State;
     }
 
+    private async Task<GameStateDto> CreateStartedCustomGame(bool specialAttacksEnabled)
+    {
+        var body = new
+        {
+            width = 10,
+            height = 10,
+            shipCounts = new Dictionary<int, int> { [5] = 1, [4] = 1, [3] = 2, [2] = 1 },
+            allowAdjacentShips = false,
+            specialAttacksEnabled,
+        };
+        var created = (await (await client.PostAsJsonAsync("/games", body, Json)).Content.ReadFromJsonAsync<GameStateDto>(Json))!;
+        var placed = await client.PostAsJsonAsync($"/games/{created.Id}/fleet/random", new { expectedVersion = created.Version }, Json);
+        placed.EnsureSuccessStatusCode();
+        var response = await client.PostAsync($"/games/{created.Id}/start", null);
+        return (await response.Content.ReadFromJsonAsync<TurnDto>(Json))!.State;
+    }
+
     private Task<HttpResponseMessage> Fire(Guid id, int column, int row, int version, bool specialAttack = false) =>
         client.PostAsJsonAsync($"/games/{id}/shots", new { column, row, expectedVersion = version, specialAttack }, Json);
 
@@ -124,6 +141,44 @@ public sealed class SpecialAttackEndpointTests : IClassFixture<WebApplicationFac
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Equal("StaleVersion", await RejectionOf(response));
+    }
+
+    [Fact]
+    public async Task Une_partie_classique_a_toujours_les_attaques_speciales_activees()
+    {
+        var state = await CreateStartedGame();
+
+        Assert.True(state.SpecialAttacksEnabled);
+    }
+
+    [Fact]
+    public async Task Une_partie_personnalisee_annonce_le_reglage_choisi_pour_les_attaques_speciales()
+    {
+        var state = await CreateStartedCustomGame(specialAttacksEnabled: false);
+
+        Assert.False(state.SpecialAttacksEnabled);
+    }
+
+    [Fact]
+    public async Task Attaques_speciales_desactivees_la_jauge_ne_charge_jamais()
+    {
+        var state = await CreateStartedCustomGame(specialAttacksEnabled: false);
+
+        // Six tirs acceptés, au-delà de l'intervalle de charge habituel (5) : si la jauge avançait
+        // malgré le réglage, elle serait pleine ici.
+        Coordinate[] cells = [new(0, 0), new(1, 0), new(2, 0), new(3, 0), new(4, 0), new(5, 0)];
+        foreach (var cell in cells)
+        {
+            var response = await Fire(state.Id, cell.Column, cell.Row, state.Version);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            state = (await Turn(response)).State;
+        }
+
+        Assert.Equal(0, state.PlayerSpecialAttackProgress);
+
+        var special = await Fire(state.Id, 6, 0, state.Version, specialAttack: true);
+        Assert.Equal(HttpStatusCode.Conflict, special.StatusCode);
+        Assert.Equal("SpecialAttackNotCharged", await RejectionOf(special));
     }
 
     [Fact]
