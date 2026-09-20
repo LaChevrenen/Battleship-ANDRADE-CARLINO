@@ -82,6 +82,7 @@ acceptés de ce camp**, arbitraire, signalé comme corrigible au moment de la va
   spéciale inutilisable près des bords ou une fois la zone déjà bien tirée, sans bénéfice évident.
 
 ## Décision
+On a fait le choix de bloquer seulement le tir si la case centrale et de laisser les autres cases faire une erreur silencieuse. Comme ça cela simplifie la lique de ce nouveau type de tir.
 
 ## Conséquences
 Constatées pendant l'implémentation (commits en Références) :
@@ -128,6 +129,7 @@ Constatées pendant l'implémentation (commits en Références) :
   `docs/VERIFICATION-MANUELLE.md` mis à jour en pas 5.
 
 ## Vérification et réexamen
+Ont à fait des test dans le front-end et en vérifier les logs pour les crashs silencieux.
 
 ## Références
 - Règles : `docs/REGLES.md`, section Attaque spéciale. Procédure manuelle :

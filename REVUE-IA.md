@@ -98,6 +98,7 @@ Le build a réussi et le test
 `Une_partie_creee_apparait_dans_l_historique_et_reste_reprenable` a réussi : `1` test, `0` échec.
 
 **Décision et justification**
+Nous avons fait ce choix dans le but d'avoir un moyen test. Mais aussi de proposer une manière plus simple de venir reprendre une partie qui avait été mis en pause.
 
 **Preuves et limites**
 La commande exécutée est :
@@ -127,6 +128,7 @@ Commande exécutée : `dotnet build "BattleShip.App/BattleShip.App.csproj" -v mi
 `BattleShip.Models` et `BattleShip.App` ont été compilés ; génération réussie en 3,2 s.
 
 **Décision et justification**
+Même si des retour visuel/audio avait été mis en place pour informer le joueur sur la partie actuel, cela restait pas assez. L'ajout du nombre de bateau restant et devenu une nécessité dans le cadre de grille customiser à le nombre différent à 5 devenait difficile à gerer pour l'utilisateur.
 
 **Preuves et limites**
 La compilation ne vérifie pas le rendu visuel dans un navigateur et aucun test automatisé de rendu
@@ -156,6 +158,7 @@ Les compilations API et App ont réussi dans `obj\\ai-validation`. Les tests cib
 contenant une touche connue étaient exclus ; la correction a fait repasser les tests.
 
 **Décision et justification**
+Nous avons choisi trois niveaux de difficulté car nous avions 3 idée d'algorythme. Ont a choisit que c'est algorythme n'ait pas accès aux vrais cases pour ne aas créer de la difficulté artificielle, pour se battre à armes égales.
 
 **Preuves et limites**
 La suite complète laisse un échec indépendant dans `FleetPlacementTests` : `AdjacentShip` attendu,
@@ -184,6 +187,7 @@ API compilée avec succès ; App Blazor compilée avec succès en 3,4 s dans la 
 `obj\\stats-validation`.
 
 **Décision et justification**
+On a décider de faire les calculs à partir du journal on non d'une autres façon dans le but que ces statiques soit accessible après la fin d'une partie.
 
 **Preuves et limites**
 La vérification exécutée est une compilation ; aucun test automatisé n'a encore exercé le calcul
@@ -212,6 +216,7 @@ La compilation API a réussi en 2,1 s dans `obj\\fleet-validation`. La compilati
 en 3,7 s dans `obj\\identity-validation`.
 
 **Décision et justification**
+
 
 **Preuves et limites**
 Les clics de reset, le rendu exact des animations et l'écoute des sons n'ont pas été vérifiés dans

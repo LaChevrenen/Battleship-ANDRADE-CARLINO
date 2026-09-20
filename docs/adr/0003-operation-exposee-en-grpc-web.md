@@ -43,6 +43,8 @@ Contraintes qui pèsent sur le choix :
 - Limite : les tests et les mutations de S6 seraient à refaire sur ce second chemin.
 
 ## Décision
+On a décider de mettre ne place le gRPC pour status du jeu car c'étais l'option la plus interresante à faire
+
 
 ## Conséquences
 Constatées pendant l'implémentation (commits en Références) :
@@ -74,6 +76,7 @@ Constatées pendant l'implémentation (commits en Références) :
   échoue avec « Failed to fetch », message qui ressemble à un refus CORS. Reporté dans le README.
 
 ## Vérification et réexamen
+Pour verifier que cela marchais nous avons utiliser, le système de résumer de parties
 
 ## Références
 - Règles : `docs/REGLES.md`. Contrat : `Protos/battleship.proto`.

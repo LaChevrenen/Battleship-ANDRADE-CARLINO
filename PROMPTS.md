@@ -82,6 +82,8 @@
   - Correction de traçabilité : Claude Code avait d'abord suggéré de présenter le calcul
     « 59 h + 8 h » comme une trouvaille du binôme. Ce calcul vient de la relecture externe.
 - Décision et justification :
+  Les premier échanges ont servs a établir un cadre fix, solides et être sur que les règles ont bien été compris par les deux parties.
+  Ce choix a été fait pour rendre le travail plus simple et fiable, un cadre fort est plus réssistant aux alucination de l'IA.
 - Scénario ou commande de vérification :
 - Résultat attendu, puis résultat observé :
 - Erreur que ce contrôle pourrait détecter :
@@ -244,6 +246,7 @@
   - Correction de traçabilité : Claude Code avait proposé de reconstruire un état intermédiaire
     de `Board.cs` pour faire deux commits ; le binôme a refusé et demandé un commit unique.
 - Décision et justification :
+  Ici le but a été de créer le moteur du jeu donc une partie très importante. Nous avons décider de faire cela dans le but encore une fois de partir sur une basse la plus saine possible. Cette phase a aussit permis d'établir les règles du jeu coté comportement du moteur en cas de mauvaise action ou bonne, dans le but d'avoir une vision global carré.
 - Scénario ou commande de vérification :
   - `dotnet build BattleShip.slnx` puis `dotnet test BattleShip.slnx` à chaque pas.
   - Mutations exécutées puis annulées, chacune suivie de `dotnet test` :
@@ -405,6 +408,7 @@
     « é »). Une exécution isolée a montré l'échec ; le recomptage sur le marqueur `[FAIL]`
     donne les chiffres ci-dessous.
 - Décision et justification :
+  Vu que les models ont été établi à la phase précendante, nous avons décider d'établir les entrées/sorties au point de vu de l'API. Ici le but étais de pouvoir tester les models établi via notre API et surtout de pouvoir commencer nos tests avant de construire notre front-end.
 - Scénario ou commande de vérification :
   - `dotnet build BattleShip.slnx` puis `dotnet test BattleShip.slnx` à chaque pas.
   - API lancée (`dotnet run --project BattleShip.API --launch-profile http`) et séquence de
@@ -487,6 +491,7 @@
   l'architecture actuelle et ne pas ajouter de dépendance ; une partie `Setup` ou `InProgress`
   est reprenable par `/partie/{identifiant}`.
 - Décision et justification :
+  Vu que les modèles et l'API étais dans état fonctionnel, ont a pu rapidement créer un système de reprise de partie. Ici nous avons laisser le choix de solution de stockage car nous avons déjà la confiance dans notre model de données.
 - Scénario ou commande de vérification :
   - `dotnet build BattleShip.slnx`.
   - `dotnet test BattleShip.Tests/BattleShip.Tests.csproj --no-restore --filter "FullyQualifiedName~Une_partie_creee_apparait_dans_l_historique" -v minimal`.
@@ -615,6 +620,7 @@
   - Claude Code n'a pas pu vérifier lui-même le comportement du navigateur : rendu de la page,
     exécution du client en WebAssembly et application réelle de la politique CORS.
 - Décision et justification :
+  La suite logique étais de créer le front-end mais nous avons décider de créer en même temps le front-end et d'intégrer le grpc. Nous avons juger que ces fonctionnalité étais fessable en paralèlles.
 - Scénario ou commande de vérification :
   - `dotnet build BattleShip.slnx` et `dotnet test BattleShip.slnx` à chaque pas.
   - Essais du conflit de types côté tests (option 1 sans puis avec `Grpc.Tools`, option 2).
@@ -754,6 +760,7 @@
     `Proto` dans la page.
   - Claude Code n'a pu vérifier ni le rendu ni les clics : aucun test ne couvre le front.
 - Décision et justification :
+  Les premier essais du front-end étais fonctionnel mais l'experience étais moyenne, c'est dont pourquoi nous nous somment pencher plus profondement dessus. On a choisit de faire cela avant de commencer à améliorer/consolider le code pour avoir une basse utilisable.
 - Scénario ou commande de vérification :
   - `dotnet build BattleShip.slnx` et `dotnet test BattleShip.slnx` à chaque pas.
   - Serveur de développement lancé : `GET /`, `GET /appsettings.json`, `GET /partie/{guid}`.
@@ -838,6 +845,7 @@
     vérifiée avant la géométrie. Le scénario « navire hors grille » du fichier a été corrigé en
     conséquence.
 - Décision et justification :
+  Ont a décider qu'avec l'état actuelle du projet ont étais en capacité à toute les modèles du moteur pour ajouter les nouvelles fonctionnalité de quality of life. 
 - Scénario ou commande de vérification :
   - `dotnet build BattleShip.slnx` et `dotnet test BattleShip.slnx` à chaque pas.
   - `api.http` rejoué avec curl contre l'API réelle.
@@ -954,6 +962,7 @@
     pendant le glisser, zone de retour au port, mode tactile séparé, état de glisser à maintenir,
     et trois à quatre scénarios de plus dans la procédure manuelle.
 - Décision et justification :
+  Après plusieurs tests ont s'est rendu compte qu'il manquais un certain nombre de fonctionnalité d'aide pour l'utilisateurs, ont avais ignorer cela pour le moment mais cela devenais pénible donc nous nous somment pencher dessus.
 - Scénario ou commande de vérification :
   - `dotnet build BattleShip.slnx` et `dotnet test BattleShip.slnx` à chaque pas.
   - Routes nouvelles rejouées avec curl contre l'API réelle.
@@ -991,6 +1000,7 @@
   maintenant la cellule et le résultat à animer. Les navires restants sont calculés depuis l'état
   révélé ; aucune position adverse non découverte n'est ajoutée au DTO.
 - Décision et justification :
+  Ont c'est rendu compte que ne voyait presque jamais ou le dernier tir à été fait, ont donc juger vital d'ajouter des indicateurs pour cela.
 - Scénario ou commande de vérification :
   - `dotnet build "BattleShip.App/BattleShip.App.csproj" -v minimal`.
 - Résultat attendu, puis résultat observé :
@@ -1017,6 +1027,7 @@
   `Normal` conserve la chasse-cible existante, et `Hard` calcule les placements compatibles avec
   les tirs révélés puis privilégie les cases les plus fréquentes.
 - Décision et justification :
+  On c'est rendu compte qu'après plusieurs parties l'IA de l'ordinateur étais plate et anuyante à force. Ont à donc creer des niveau de difficulté pour rendre le jeu plus intérresant.
 - Scénario ou commande de vérification :
   - `dotnet build "BattleShip.API/BattleShip.API.csproj" -v minimal -p:BaseOutputPath="obj\ai-validation\"`.
   - `dotnet build "BattleShip.App/BattleShip.App.csproj" -v minimal -p:BaseOutputPath="obj\ai-validation\"`.
@@ -1050,6 +1061,7 @@
   acceptés du joueur, ajoutées à `GameStateDto` et transportées par gRPC-Web. L'historique ne porte
   que sur les cibles et résultats déjà connus du joueur.
 - Décision et justification :
+  Etant un binome de fan de jeux video de type tir à la première personne, nous aimons naturellement avoir des statistiques sur nos performances. C'est pourquoi nous avons voulu ajouter ces statistiques au jeu.
 - Scénario ou commande de vérification :
   - `dotnet build "BattleShip.API/BattleShip.API.csproj" -v minimal -p:BaseOutputPath="obj\stats-validation\"`.
   - `dotnet build "BattleShip.App/BattleShip.App.csproj" -v minimal -p:BaseOutputPath="obj\stats-validation\"`.
@@ -1074,6 +1086,7 @@
   reste impossible après le démarrage. Les sons utilisent Web Audio côté navigateur et peuvent
   être désactivés ; les règles restent côté serveur.
 - Décision et justification :
+  Nous n'étions pas encore satifait de l'apparence de l'application donc nous avons encore fait des modifications dessus.
 - Scénario ou commande de vérification :
   - `dotnet build "BattleShip.API/BattleShip.API.csproj" -v minimal -p:BaseOutputPath="obj\fleet-validation\"`.
   - `dotnet build "BattleShip.App/BattleShip.App.csproj" -v minimal -p:BaseOutputPath="obj\fleet-validation\"`.
@@ -1099,6 +1112,7 @@
   la flotte soit complète. Les contrôles audio sont regroupés dans un panneau cohérent ; la
   musique est synthétisée côté navigateur pour éviter une ressource externe.
 - Décision et justification :
+  On a finallement decider d'ajouter de l'audio au jeu pour le rendre plus vivant.
 - Scénario ou commande de vérification :
   - `dotnet build "BattleShip.App/BattleShip.App.csproj" -v minimal -p:BaseOutputPath="obj\pivot-validation\"`.
   - `dotnet build "BattleShip.App/BattleShip.App.csproj" -v minimal -p:BaseOutputPath="obj\audio-layout-validation\"`.
@@ -1161,6 +1175,7 @@
     jamais été créés**. Leurs modifications sont restées non commitées dans `Partie.razor` et ont
     été remplacées par la reprise en main.
 - Décision et justification :
+  Après avoir ajouter tout la quality of life nous avions de léger bugs qui commencais a rendre l'experience moins amussante. C'est donc pourquoi on refais une phase de correction de bug pour de nouveaux avoir une version stable.
 - Scénario ou commande de vérification :
   - `dotnet build BattleShip.slnx` et `dotnet test BattleShip.slnx`.
   - Deux mutations exécutées puis annulées sur `FleetUnderConstruction.TryRotateAt`.
@@ -1274,6 +1289,7 @@
     `?` se calaient donc sur la zone de contenu au lieu de la fenêtre. Corrigé par
     `transform: none` dans la dernière image-clé.
 - Décision et justification :
+  Nous avons choisit d'ajouter des élement pour la configuration du front uniquement pour pouvoir donner à l'utilisateur le choix d'avoir les features de quality of life ou pas. On c'est rendu compte que certaines features étais bien pour nous mais pas pour d'autre camarades.
 - Scénario ou commande de vérification :
   - `dotnet build BattleShip.slnx`, `dotnet test BattleShip.slnx`.
   - Compilations ciblées de `BattleShip.App` vers une sortie isolée quand les serveurs du binôme

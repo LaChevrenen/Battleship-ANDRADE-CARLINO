@@ -61,6 +61,7 @@ Pour colorer l'aperçu en vert ou en rouge, deux façons de savoir si un placeme
   (15 à 20 Ko) et est recalculé à chaque lecture, y compris hors préparation.
 
 ## Décision
+On a choisit de valider la possition à la fin de chaque click dans le but d'autoriser des passages invalide temporairement sur le front, notamememnt pendant la rotation des bateau.
 
 ## Conséquences
 Constatées pendant l'implémentation (commits en Références) :
@@ -128,6 +129,8 @@ Constatées pendant l'implémentation (commits en Références) :
   le tracé et rendait la molette sans effet.
 
 ## Vérification et réexamen
+
+Pouir vérifier cela des test manuelles sur le front-end ont été fait.
 
 ## Références
 - Règles : `docs/REGLES.md`. Procédure manuelle : `docs/VERIFICATION-MANUELLE.md`.
